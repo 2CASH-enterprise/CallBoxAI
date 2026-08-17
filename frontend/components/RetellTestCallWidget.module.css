@@ -1,0 +1,122 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 18, 32, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.panel {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 440px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.header h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  color: var(--color-muted);
+  line-height: 1;
+  padding: 0;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-bottom: 16px;
+}
+
+.error {
+  background: var(--color-red-soft);
+  color: var(--color-red);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+
+.statusDotActive {
+  background: var(--color-signal);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.actions {
+  margin-bottom: 16px;
+}
+
+.startButton {
+  width: 100%;
+  background: var(--color-signal);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 11px;
+  font-size: 14px;
+}
+
+.stopButton {
+  width: 100%;
+  background: var(--color-red);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 11px;
+  font-size: 14px;
+}
+
+.stopButton:disabled {
+  opacity: 0.6;
+}
+
+.transcript {
+  border-top: 1px solid var(--color-line);
+  padding-top: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.transcriptLine {
+  font-size: 13px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}

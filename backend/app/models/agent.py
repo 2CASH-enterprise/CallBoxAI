@@ -28,4 +28,10 @@ class Agent(Base):
     transfer_number = Column(String, nullable=True)
     transfer_instructions = Column(Text, nullable=True)
 
+    # ID de l'agent créé côté Retell (dans leur dashboard), utilisé pour le
+    # test vocal en direct via Web Call (section 16 — intégration réelle).
+    # Optionnel : si vide, on retombe sur RETELL_AGENT_ID (configuration
+    # globale) si défini.
+    retell_agent_id = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)

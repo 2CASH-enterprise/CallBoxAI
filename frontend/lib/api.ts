@@ -86,6 +86,7 @@ export interface Agent {
   transfer_enabled: boolean;
   transfer_number: string | null;
   transfer_instructions: string | null;
+  retell_agent_id: string | null;
 }
 
 export interface Call {
@@ -323,12 +324,18 @@ export const api = {
       transfer_enabled?: boolean;
       transfer_number?: string;
       transfer_instructions?: string;
+      retell_agent_id?: string;
     }
   ) =>
     request<Agent>("/agents", {
       method: "POST",
       organizationId,
       body: JSON.stringify(data),
+    }),
+  createAgentTestCall: (organizationId: string, agentId: string) =>
+    request<{ access_token: string; call_id: string }>(`/agents/${agentId}/test-call`, {
+      method: "POST",
+      organizationId,
     }),
 
   listCalls: (organizationId: string) =>

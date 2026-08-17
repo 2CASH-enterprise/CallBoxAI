@@ -33,6 +33,20 @@ class RetellProvider(VoiceProvider):
             timeout=30.0,
         )
 
+    def create_web_call(self, agent_id: str | None = None) -> dict:
+        """
+        Crée une session d'appel Web (WebRTC, section 16) : permet de tester
+        la conversation vocale en direct depuis le navigateur, sans passer
+        par un numéro de téléphone ni par Twilio. Retourne notamment un
+        access_token à utiliser côté frontend avec le SDK Web de Retell.
+        """
+        response = self._client.post(
+            "/v2/create-web-call",
+            json={"agent_id": agent_id or self._agent_id},
+        )
+        response.raise_for_status()
+        return response.json()
+
     def create_phone_call(self, to_number: str, from_number: str) -> dict:
         """
         Déclenche réellement l'appel (téléphonie + IA en un seul appel API,

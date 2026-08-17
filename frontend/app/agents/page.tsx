@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent } from "@/lib/api";
+import { RetellTestCallWidget } from "@/components/RetellTestCallWidget";
 import styles from "./agents.module.css";
 
 const LANGUAGES = [
@@ -16,9 +17,11 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [testingAgentId, setTestingAgentId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
     transfer_enabled: false, transfer_number: "", transfer_instructions: "",
+    retell_agent_id: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -39,6 +42,7 @@ export default function AgentsPage() {
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
         transfer_enabled: false, transfer_number: "", transfer_instructions: "",
+        retell_agent_id: "",
       });
       setModalOpen(false);
       load();
@@ -77,6 +81,23 @@ export default function AgentsPage() {
                 <span className={styles.langTag} style={{ marginLeft: 6, background: "var(--color-amber-soft)", color: "var(--color-amber)" }}>
                   Transfert activé
                 </span>
+              )}
+              {agent.retell_agent_id && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    onClick={() => setTestingAgentId(agent.id)}
+                    style={{
+                      border: "1px solid var(--color-signal)",
+                      color: "var(--color-signal)",
+                      background: "transparent",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "6px 12px",
+                      fontSize: 12,
+                    }}
+                  >
+                    Tester en direct (voix)
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -134,6 +155,16 @@ export default function AgentsPage() {
             </div>
 
             <div>
+              <label htmlFor="agent-retell-id">ID agent Retell (optionnel, pour le test vocal en direct)</label>
+              <input
+                id="agent-retell-id"
+                value={form.retell_agent_id}
+                onChange={(e) => setForm({ ...form, retell_agent_id: e.target.value })}
+                placeholder="agent_xxxxxxxxxxxx (créé dans le dashboard Retell)"
+              />
+            </div>
+
+            <div>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
                   type="checkbox"
@@ -177,6 +208,14 @@ export default function AgentsPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {testingAgentId && currentOrg && (
+        <RetellTestCallWidget
+          organizationId={currentOrg.organization_id}
+          agentId={testingAgentId}
+          onClose={() => setTestingAgentId(null)}
+        />
       )}
     </div>
   );
