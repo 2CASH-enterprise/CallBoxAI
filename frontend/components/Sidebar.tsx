@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { useBranding } from "@/lib/useBranding";
 import styles from "./Sidebar.module.css";
 
 const clientLinks = [
@@ -17,6 +18,7 @@ const pilotageLinks = [{ href: "/distributors", label: "Distributeurs" }];
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const branding = useBranding();
 
   // Un utilisateur "client" (membre d'au moins une organisation) voit les
   // menus opérationnels. Un Super Admin ou un Distributeur voit "Pilotage".
@@ -39,10 +41,15 @@ export function Sidebar() {
     });
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={styles.sidebar} style={{ ["--brand-color" as string]: branding.primaryColor }}>
       <div className={styles.brand}>
-        <span className={styles.brandMark}>●</span>
-        <span className={styles.brandName}>CallBoxAI</span>
+        {branding.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={branding.logoUrl} alt={branding.name} className={styles.brandLogo} />
+        ) : (
+          <span className={styles.brandMark}>●</span>
+        )}
+        <span className={styles.brandName}>{branding.name}</span>
       </div>
 
       {showClientLinks && (

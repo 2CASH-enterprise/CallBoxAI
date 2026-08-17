@@ -26,6 +26,17 @@ def create_distributor(client, admin_token, name="Jean K", password="password123
     return distributor, distributor_token
 
 
+def onboarding_payload(name="Client Onboardé", country=None):
+    """Payload valide pour POST /distributors/{id}/clients (crée aussi le compte Owner)."""
+    return {
+        "name": name,
+        "country": country,
+        "owner_email": f"owner-{uuid.uuid4().hex[:8]}@example.com",
+        "owner_password": "password123",
+        "owner_full_name": "Propriétaire Test",
+    }
+
+
 def test_only_super_admin_can_create_distributor(client):
     token, _ = register_user(client)  # utilisateur normal, pas Super Admin
     r = client.post(
@@ -50,7 +61,7 @@ def test_onboard_client_attaches_distributor_id(client):
 
     r = client.post(
         f"/distributors/{distributor['id']}/clients",
-        json={"name": "Client Onboardé", "country": "SN"},
+        json=onboarding_payload("Client Onboardé", "SN"),
         headers=auth_headers(distributor_token),
     )
     assert r.status_code == 200
@@ -71,10 +82,10 @@ def test_distributor_isolation_between_portfolios(client):
     dist_b, token_b = create_distributor(client, admin_token, name="Distributeur B")
 
     client.post(
-        f"/distributors/{dist_a['id']}/clients", json={"name": "Client de A"}, headers=auth_headers(token_a)
+        f"/distributors/{dist_a['id']}/clients", json=onboarding_payload("Client de A"), headers=auth_headers(token_a)
     )
     client.post(
-        f"/distributors/{dist_b['id']}/clients", json={"name": "Client de B"}, headers=auth_headers(token_b)
+        f"/distributors/{dist_b['id']}/clients", json=onboarding_payload("Client de B"), headers=auth_headers(token_b)
     )
 
     # Distributeur A ne peut même pas CONSULTER le portefeuille de B
@@ -91,7 +102,7 @@ def test_super_admin_can_access_any_distributor_portfolio(client):
     distributor, distributor_token = create_distributor(client, admin_token)
     client.post(
         f"/distributors/{distributor['id']}/clients",
-        json={"name": "Client X"},
+        json=onboarding_payload("Client X"),
         headers=auth_headers(distributor_token),
     )
 
@@ -106,7 +117,7 @@ def test_dashboard_aggregates_calls_across_portfolio(client):
 
     org = client.post(
         f"/distributors/{distributor['id']}/clients",
-        json={"name": "Client X"},
+        json=onboarding_payload("Client X"),
         headers=auth_headers(distributor_token),
     ).json()
 
@@ -139,7 +150,7 @@ def test_calculate_commissions_persists_records(client):
 
     org = client.post(
         f"/distributors/{distributor['id']}/clients",
-        json={"name": "Client Y"},
+        json=onboarding_payload("Client Y"),
         headers=auth_headers(distributor_token),
     ).json()
 
@@ -191,3 +202,89 @@ def test_only_super_admin_can_update_commission_rate(client):
     )
     assert allowed.status_code == 200
     assert allowed.json()["commission_rate"] == 15.0
+
+
+def test_distributor_can_update_own_branding(client):
+    admin_token = create_super_admin(client)
+    distributor, distributor_token = create_distributor(client, admin_token)
+
+    response = client.patch(
+        f"/distributors/{distributor['id']}/branding",
+        json={"brand_name": "Sonatel Business", "logo_url": "https://example.com/logo.png", "primary_color": "#FF6600"},
+        headers=auth_headers(distributor_token),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["brand_name"] == "Sonatel Business"
+    assert body["logo_url"] == "https://example.com/logo.png"
+
+
+def test_distributor_cannot_update_another_distributors_branding(client):
+    admin_token = create_super_admin(client)
+    _dist_a, token_a = create_distributor(client, admin_token, name="Distributeur A")
+    dist_b, _token_b = create_distributor(client, admin_token, name="Distributeur B")
+
+    response = client.patch(
+        f"/distributors/{dist_b['id']}/branding",
+        json={"brand_name": "Usurpation"},
+        headers=auth_headers(token_a),
+    )
+    assert response.status_code == 403
+
+
+def test_distributor_sees_own_branding_in_me(client):
+    admin_token = create_super_admin(client)
+    distributor, distributor_token = create_distributor(client, admin_token)
+
+    client.patch(
+        f"/distributors/{distributor['id']}/branding",
+        json={"brand_name": "MaMarque", "logo_url": "https://example.com/logo.png"},
+        headers=auth_headers(distributor_token),
+    )
+
+    me = client.get("/auth/me", headers=auth_headers(distributor_token)).json()
+    assert me["distributor_branding"]["brand_name"] == "MaMarque"
+
+
+def test_onboarded_client_sees_distributor_branding_when_logged_in(client):
+    """
+    Test de bout en bout de la marque blanche (section 39) : le client
+    onboardé par un distributeur se connecte avec SON PROPRE compte (créé
+    automatiquement lors de l'onboarding) et voit la marque de ce distributeur
+    dans /auth/me — jamais celle d'un autre distributeur ni la marque par défaut.
+    """
+    admin_token = create_super_admin(client)
+    distributor, distributor_token = create_distributor(client, admin_token)
+
+    client.patch(
+        f"/distributors/{distributor['id']}/branding",
+        json={"brand_name": "MaMarque", "logo_url": "https://example.com/logo.png", "primary_color": "#FF6600"},
+        headers=auth_headers(distributor_token),
+    )
+
+    payload = onboarding_payload("Client Onboardé")
+    client.post(
+        f"/distributors/{distributor['id']}/clients",
+        json=payload,
+        headers=auth_headers(distributor_token),
+    )
+
+    # Le client se connecte avec SES PROPRES identifiants (créés à l'onboarding)
+    login = client.post("/auth/login", json={"email": payload["owner_email"], "password": payload["owner_password"]})
+    assert login.status_code == 200
+    client_token = login.json()["access_token"]
+
+    me = client.get("/auth/me", headers=auth_headers(client_token)).json()
+    assert len(me["memberships"]) == 1
+    branding = me["memberships"][0]["branding"]
+    assert branding is not None
+    assert branding["brand_name"] == "MaMarque"
+    assert branding["logo_url"] == "https://example.com/logo.png"
+    assert branding["primary_color"] == "#FF6600"
+
+
+def test_direct_client_has_no_branding(client):
+    """Un client direct (sans distributeur) ne doit jamais recevoir de branding."""
+    token, _org_id = register_user(client, org_name="Client Direct")
+    me = client.get("/auth/me", headers=auth_headers(token)).json()
+    assert me["memberships"][0]["branding"] is None

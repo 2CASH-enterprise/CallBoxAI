@@ -41,4 +41,12 @@ class Distributor(Base):
     country = Column(String, nullable=True)
     commission_rate = Column(Float, default=10.0)  # en pourcentage
     status = Column(String, default="active")  # active | suspended
+
+    # Marque blanche (white-label) : quand renseignés, ces champs remplacent
+    # la marque "CallBoxAI" par défaut, à la fois dans l'espace de pilotage du
+    # distributeur ET dans le Dashboard client de ses propres clients.
+    brand_name = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
+    primary_color = Column(String, nullable=True)  # ex. "#12B886"
+
     created_at = Column(DateTime, default=datetime.utcnow)

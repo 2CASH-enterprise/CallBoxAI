@@ -109,6 +109,9 @@ export interface Distributor {
   country: string | null;
   commission_rate: number;
   status: string;
+  brand_name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
 }
 
 export interface DistributorClient {
@@ -136,10 +139,17 @@ export interface Commission {
   status: string;
 }
 
+export interface Branding {
+  brand_name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+}
+
 export interface Membership {
   organization_id: string;
   organization_name: string;
   role: string;
+  branding: Branding | null;
 }
 
 export interface Me {
@@ -148,6 +158,7 @@ export interface Me {
   full_name: string | null;
   is_super_admin: boolean;
   distributor_id: string | null;
+  distributor_branding: Branding | null;
   memberships: Membership[];
 }
 
@@ -213,11 +224,19 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ commission_rate }),
     }),
+  updateBranding: (distributorId: string, data: { brand_name?: string; logo_url?: string; primary_color?: string }) =>
+    request<Distributor>(`/distributors/${distributorId}/branding`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
   getDistributorDashboard: (distributorId: string) =>
     request<DistributorDashboard>(`/distributors/${distributorId}/dashboard`),
   listDistributorClients: (distributorId: string) =>
     request<DistributorClient[]>(`/distributors/${distributorId}/clients`),
-  onboardDistributorClient: (distributorId: string, data: { name: string; country?: string }) =>
+  onboardDistributorClient: (
+    distributorId: string,
+    data: { name: string; country?: string; owner_email: string; owner_password: string; owner_full_name: string }
+  ) =>
     request<DistributorClient>(`/distributors/${distributorId}/clients`, {
       method: "POST",
       body: JSON.stringify(data),

@@ -19,8 +19,14 @@
 }
 
 .brandMark {
-  color: var(--color-signal);
+  color: var(--brand-color, var(--color-signal));
   font-size: 20px;
+}
+
+.brandLogo {
+  height: 24px;
+  max-width: 140px;
+  object-fit: contain;
 }
 
 .brandName {
@@ -55,7 +61,7 @@
 .navLinkActive {
   color: #FFFFFF;
   background: var(--color-navy-soft);
-  border-left: 2px solid var(--color-signal);
+  border-left: 2px solid var(--brand-color, var(--color-signal));
   font-weight: 500;
 }
 

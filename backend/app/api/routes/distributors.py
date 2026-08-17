@@ -18,6 +18,7 @@ from app.core.database import get_db
 from app.core.security import require_super_admin, require_distributor_access, hash_password
 from app.models.distributor import Distributor
 from app.models.organization import Organization
+from app.models.organization_membership import OrganizationMembership
 from app.models.call import Call
 from app.models.commission import Commission
 from app.models.user import User
@@ -48,9 +49,18 @@ class DistributorOut(BaseModel):
     country: str | None
     commission_rate: float
     status: str
+    brand_name: str | None
+    logo_url: str | None
+    primary_color: str | None
 
     class Config:
         from_attributes = True
+
+
+class BrandingUpdate(BaseModel):
+    brand_name: str | None = None
+    logo_url: str | None = None
+    primary_color: str | None = None
 
 
 class CommissionRateUpdate(BaseModel):
@@ -60,6 +70,9 @@ class CommissionRateUpdate(BaseModel):
 class ClientCreate(BaseModel):
     name: str
     country: str | None = None
+    owner_email: EmailStr
+    owner_password: str
+    owner_full_name: str
 
 
 class ClientOut(BaseModel):
@@ -168,6 +181,30 @@ def update_commission_rate(
     return distributor
 
 
+@router.patch("/distributors/{distributor_id}/branding", response_model=DistributorOut)
+def update_branding(
+    distributor_id: uuid.UUID,
+    payload: BrandingUpdate,
+    db: Session = Depends(get_db),
+    _access: uuid.UUID = Depends(require_distributor_access),
+):
+    """
+    Marque blanche (white-label) : le distributeur définit son logo et son
+    nom de marque, propagés à ses propres clients (voir /auth/me). Accessible
+    au Super Admin ou au distributeur concerné lui-même (auto-service).
+    """
+    distributor = get_distributor_or_404(distributor_id, db)
+    if payload.brand_name is not None:
+        distributor.brand_name = payload.brand_name
+    if payload.logo_url is not None:
+        distributor.logo_url = payload.logo_url
+    if payload.primary_color is not None:
+        distributor.primary_color = payload.primary_color
+    db.commit()
+    db.refresh(distributor)
+    return distributor
+
+
 @router.get("/distributors/{distributor_id}/clients", response_model=list[ClientOut])
 def list_distributor_clients(
     distributor_id: uuid.UUID,
@@ -191,11 +228,30 @@ def onboard_client(
 ):
     """
     Onboarding : le distributeur crée un nouveau client, automatiquement
-    rattaché à lui (section 39.3).
+    rattaché à lui (section 39.3), ET crée dans la foulée le compte de
+    connexion "Owner" de ce client — sans ça, le client ne pourrait jamais se
+    connecter à son propre Dashboard.
     """
     get_distributor_or_404(distributor_id, db)
+
+    if db.query(User).filter(User.email == payload.owner_email).first():
+        raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
+    if len(payload.owner_password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caractères")
+
     org = Organization(name=payload.name, country=payload.country, distributor_id=distributor_id)
     db.add(org)
+    db.flush()
+
+    owner = User(
+        email=payload.owner_email,
+        password_hash=hash_password(payload.owner_password),
+        full_name=payload.owner_full_name,
+    )
+    db.add(owner)
+    db.flush()
+
+    db.add(OrganizationMembership(user_id=owner.id, organization_id=org.id, role="owner"))
     db.commit()
     db.refresh(org)
     return org
