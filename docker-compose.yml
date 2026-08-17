@@ -53,6 +53,19 @@ services:
     volumes:
       - ./backend:/app
 
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Lu depuis le fichier .env à la racine du projet (voir .env.example).
+        # Doit pointer vers l'adresse PUBLIQUE du serveur (pas "backend" ni
+        # "localhost"), car cet appel part du navigateur de l'utilisateur.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   minio_data:

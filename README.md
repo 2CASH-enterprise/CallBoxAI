@@ -22,11 +22,31 @@ uvicorn app.main:app --reload
 L'API est alors disponible sur http://localhost:8000, documentation interactive
 sur http://localhost:8000/docs.
 
-## Démarrage avec Docker (Postgres, Redis, MinIO, Mailhog inclus)
+## Démarrage avec Docker (Postgres, Redis, MinIO, Mailhog, backend, frontend)
 
 ```bash
-docker compose up --build
+cp .env.example .env
+# Éditez .env et remplacez VOTRE_IP_SERVEUR par l'adresse IP publique réelle
+# du serveur (ex : NEXT_PUBLIC_API_URL=http://178.104.56.200:8000)
+
+docker compose up -d --build
+docker compose ps        # vérifie que tous les services sont "Up"
 ```
+
+Une fois lancé :
+- Dashboard client : `http://VOTRE_IP_SERVEUR:3000`
+- API backend : `http://VOTRE_IP_SERVEUR:8000/docs`
+
+**Important** : les ports 3000 et 8000 doivent être ouverts sur le pare-feu du
+serveur (voir `ufw` ci-dessous) et, si votre hébergeur en propose un
+(ex. Hetzner Cloud), dans son pare-feu réseau également.
+
+```bash
+ufw allow 3000/tcp
+ufw allow 8000/tcp
+```
+
+Pour arrêter : `docker compose down`. Pour voir les logs : `docker compose logs -f`.
 
 ## Tester l'API manuellement
 
