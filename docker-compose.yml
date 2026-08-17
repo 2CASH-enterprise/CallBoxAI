@@ -47,17 +47,16 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql://app:app@postgres:5432/app
-      TELEPHONY_PROVIDER: mock
-      VOICE_PROVIDER: mock
+      TELEPHONY_PROVIDER: ${TELEPHONY_PROVIDER:-mock}
+      VOICE_PROVIDER: ${VOICE_PROVIDER:-mock}
       MESSAGING_PROVIDER: mock
       KYC_PROVIDER: manual_review
       # --- Identifiants des fournisseurs réels (section 16) ---
-      # Laissez ces valeurs VIDES tant que vous n'êtes pas prêt à dépenser :
-      # tant que TELEPHONY_PROVIDER/VOICE_PROVIDER valent "mock" (ci-dessus),
-      # elles ne servent à rien et aucun appel réel n'est jamais déclenché.
-      # Pour activer Retell/Twilio pour de vrai : renseignez les valeurs
-      # ci-dessous ET changez TELEPHONY_PROVIDER en "twilio" et/ou
-      # VOICE_PROVIDER en "retell".
+      # Tant que TELEPHONY_PROVIDER et VOICE_PROVIDER valent "mock" (valeur
+      # par défaut ci-dessus), aucun appel réel n'est jamais déclenché, même
+      # si les clés ci-dessous sont renseignées. Pour activer Retell/Twilio :
+      # dans le fichier .env, ajoutez VOICE_PROVIDER=retell et/ou
+      # TELEPHONY_PROVIDER=twilio, EN PLUS des clés correspondantes.
       RETELL_API_KEY: ${RETELL_API_KEY:-}
       RETELL_AGENT_ID: ${RETELL_AGENT_ID:-}
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
