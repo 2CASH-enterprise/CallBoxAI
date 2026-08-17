@@ -4,7 +4,7 @@ Point d'entrée FastAPI.
 from fastapi import FastAPI
 
 from app.core.database import Base, engine
-from app.api.routes import health, organizations, agents, calls
+from app.api.routes import health, organizations, agents, calls, contacts
 
 # Création des tables au démarrage (dev/tests uniquement ; en prod : migrations Alembic)
 Base.metadata.create_all(bind=engine)
@@ -15,3 +15,4 @@ app.include_router(health.router)
 app.include_router(organizations.router)
 app.include_router(agents.router)
 app.include_router(calls.router)
+app.include_router(contacts.router)

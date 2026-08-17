@@ -1,0 +1,68 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.orgSwitch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+.newOrgButton {
+  border: 1px dashed var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.newOrgButton:hover {
+  border-color: var(--color-signal);
+  color: var(--color-signal);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-signal);
+}
+
+.newOrgForm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.newOrgForm input {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.newOrgForm button {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  background: var(--color-navy);
+  color: white;
+}

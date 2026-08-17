@@ -1,4 +1,14 @@
-# Frontend (à venir)
+# CallBoxAI — Dashboard client
 
-Le frontend Next.js sera scaffoldé dans une prochaine étape (Phase 1 — Dashboard client,
-Dashboard Distributeur, Dashboard Super Admin — voir cahier des charges sections 7, 22, 39).
+Interface web du client (appels, agents, contacts CRM) — Next.js + TypeScript.
+
+## Démarrage
+
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Le backend (voir ../backend) doit tourner sur http://localhost:8000 (ou l'URL
+définie dans NEXT_PUBLIC_API_URL).
