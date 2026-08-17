@@ -11,15 +11,18 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import require_organization_access
+from app.core.rag import retrieve_top_chunks
 from app.models.call import Call
 from app.models.agent import Agent
 from app.providers.telephony.mock import MockTelephonyProvider
 from app.providers.voice.mock import MockVoiceProvider
+from app.providers.embeddings.mock import MockEmbeddingProvider
 
 router = APIRouter()
 
 telephony_provider = MockTelephonyProvider()
 voice_provider = MockVoiceProvider()
+embedding_provider = MockEmbeddingProvider()
 
 
 class CallCreate(BaseModel):
@@ -39,6 +42,7 @@ class CallOut(BaseModel):
     provider_call_id: str | None
     transcript: str | None
     summary: str | None
+    knowledge_context: str | None
 
     class Config:
         from_attributes = True
@@ -64,12 +68,24 @@ def create_call(
         agent_id=str(agent.id),
     )
 
-    # 2. Conversation IA (voice provider)
+    # 2. Consultation de la base de connaissances (RAG, section 10) — l'agent
+    # récupère le contexte pertinent avant de démarrer la conversation.
+    knowledge_query = agent.objective or agent.system_prompt or agent.name
+    retrieved = retrieve_top_chunks(db, organization_id, knowledge_query, embedding_provider, top_k=1)
+    knowledge_context = retrieved[0]["content"] if retrieved else None
+
+    # 3. Conversation IA (voice provider)
     voice_provider.start_conversation(call_id=call_result["provider_call_id"], system_prompt=agent.system_prompt or "")
     transcript = voice_provider.get_transcript(call_result["provider_call_id"])
     summary = voice_provider.get_summary(call_result["provider_call_id"])
 
-    # 3. Enregistrement en base
+    if knowledge_context:
+        transcript += (
+            f"\n\n[Base de connaissances consultée — extrait de « {retrieved[0]['document_title']} »] "
+            f"{knowledge_context}"
+        )
+
+    # 4. Enregistrement en base
     call = Call(
         organization_id=organization_id,
         agent_id=agent.id,
@@ -79,6 +95,7 @@ def create_call(
         provider_call_id=call_result["provider_call_id"],
         transcript=transcript,
         summary=summary,
+        knowledge_context=knowledge_context,
         started_at=datetime.utcnow(),
         ended_at=datetime.utcnow(),
     )

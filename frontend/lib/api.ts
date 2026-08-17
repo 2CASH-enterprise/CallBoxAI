@@ -95,6 +95,24 @@ export interface Call {
   provider_call_id: string | null;
   transcript: string | null;
   summary: string | null;
+  knowledge_context: string | null;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  organization_id: string;
+  title: string;
+  source_type: string;
+  chunks_count: number;
+  created_at: string;
+}
+
+export interface KnowledgeSearchResult {
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  content: string;
+  score: number;
 }
 
 export interface CampaignStats {
@@ -310,6 +328,32 @@ export const api = {
     request<Campaign>(`/campaigns/${campaignId}/pause`, { method: "POST", organizationId }),
   runCampaignBatch: (organizationId: string, campaignId: string) =>
     request<BatchResult>(`/campaigns/${campaignId}/run-batch`, { method: "POST", organizationId }),
+
+  listKnowledgeDocuments: (organizationId: string) =>
+    request<KnowledgeDocument[]>("/knowledge/documents", { organizationId }),
+  createKnowledgeDocument: (organizationId: string, data: { title: string; content: string }) =>
+    request<KnowledgeDocument>("/knowledge/documents", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  uploadKnowledgeDocument: (organizationId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<KnowledgeDocument>("/knowledge/documents/upload", {
+      method: "POST",
+      organizationId,
+      body: formData,
+    });
+  },
+  deleteKnowledgeDocument: (organizationId: string, documentId: string) =>
+    request<void>(`/knowledge/documents/${documentId}`, { method: "DELETE", organizationId }),
+  searchKnowledgeBase: (organizationId: string, query: string, top_k = 3) =>
+    request<KnowledgeSearchResult[]>("/knowledge/search", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify({ query, top_k }),
+    }),
 
   listContacts: (organizationId: string) =>
     request<Contact[]>("/contacts", { organizationId }),

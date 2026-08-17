@@ -8,6 +8,7 @@ from app.models.commission import Commission
 from app.models.user import User
 from app.models.organization_membership import OrganizationMembership
 from app.models.campaign import Campaign, CampaignTarget
+from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
 
 __all__ = [
     "Organization",
@@ -22,4 +23,6 @@ __all__ = [
     "OrganizationMembership",
     "Campaign",
     "CampaignTarget",
+    "KnowledgeDocument",
+    "KnowledgeChunk",
 ]

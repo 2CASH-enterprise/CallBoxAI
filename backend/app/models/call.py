@@ -25,6 +25,7 @@ class Call(Base):
     duration_seconds = Column(Integer, default=0)
     transcript = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
+    knowledge_context = Column(Text, nullable=True)  # extrait de la base de connaissances consulté (section 10)
 
     started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime, nullable=True)
