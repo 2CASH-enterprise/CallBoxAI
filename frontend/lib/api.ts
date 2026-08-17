@@ -348,6 +348,15 @@ export const api = {
       organizationId,
       body: JSON.stringify(data),
     }),
+  createRealCall: (
+    organizationId: string,
+    data: { agent_id: string; to_number: string; from_number: string; direction?: string }
+  ) =>
+    request<Call>("/calls/real", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
   transferCall: (organizationId: string, callId: string, destination?: string) =>
     request<Call>(`/calls/${callId}/transfer`, {
       method: "POST",

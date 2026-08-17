@@ -13,6 +13,8 @@ export default function CallsPage() {
   const [toNumber, setToNumber] = useState("+221770000000");
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
+  const [triggeringReal, setTriggeringReal] = useState(false);
+  const [realCallError, setRealCallError] = useState<string | null>(null);
   const [transferringId, setTransferringId] = useState<string | null>(null);
 
   const load = () => {
@@ -42,6 +44,26 @@ export default function CallsPage() {
       load();
     } finally {
       setSimulating(false);
+    }
+  }
+
+  async function handleRealCall() {
+    if (!currentOrg || !selectedAgent) return;
+    setTriggeringReal(true);
+    setRealCallError(null);
+    try {
+      await api.createRealCall(currentOrg.organization_id, {
+        agent_id: selectedAgent,
+        to_number: toNumber,
+        from_number: "",
+        direction: "outbound",
+      });
+      load();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Impossible de déclencher l'appel réel.";
+      setRealCallError(message);
+    } finally {
+      setTriggeringReal(false);
     }
   }
 
@@ -85,9 +107,30 @@ export default function CallsPage() {
             <button onClick={handleSimulate} disabled={simulating}>
               {simulating ? "Appel en cours…" : "Simuler un appel"}
             </button>
+            <button
+              onClick={handleRealCall}
+              disabled={triggeringReal}
+              title="Déclenche un vrai appel téléphonique via Twilio + Retell — consomme du crédit réel"
+              style={{
+                border: "1px solid var(--color-amber)",
+                color: "var(--color-amber)",
+                background: "transparent",
+                borderRadius: "var(--radius-sm)",
+                padding: "9px 14px",
+                fontSize: 13,
+              }}
+            >
+              {triggeringReal ? "Déclenchement…" : "⚠ Déclencher un vrai appel"}
+            </button>
           </>
         )}
       </div>
+
+      {realCallError && (
+        <div style={{ background: "var(--color-red-soft)", color: "var(--color-red)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, marginBottom: 16 }}>
+          {realCallError}
+        </div>
+      )}
 
       <div className={styles.table}>
         <div className={`${styles.row} ${styles.rowHead}`} style={{ gridTemplateColumns: "90px 1fr 1fr 130px 110px 130px" }}>
@@ -122,10 +165,16 @@ export default function CallsPage() {
                 style={
                   call.status === "transferred"
                     ? { color: "var(--color-amber)", fontFamily: "var(--font-mono)", fontSize: 12 }
+                    : call.status === "in_progress"
+                    ? { color: "var(--color-signal)", fontFamily: "var(--font-mono)", fontSize: 12 }
                     : { fontFamily: "var(--font-mono)", fontSize: 12 }
                 }
               >
-                {call.status === "transferred" ? `Transféré → ${call.transferred_to}` : call.status}
+                {call.status === "transferred"
+                  ? `Transféré → ${call.transferred_to}`
+                  : call.status === "in_progress"
+                  ? "En cours (appel réel)…"
+                  : call.status}
               </span>
               <span>
                 {call.status !== "transferred" && (
