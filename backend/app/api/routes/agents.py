@@ -2,6 +2,7 @@
 Endpoints Agents IA — toujours filtrés par organization_id (isolation multi-tenant,
 section 3 du cahier des charges).
 """
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +13,8 @@ from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.core.config import settings
 from app.models.agent import Agent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -24,7 +27,6 @@ class AgentCreate(BaseModel):
     transfer_enabled: bool = False
     transfer_number: str | None = None
     transfer_instructions: str | None = None
-    retell_agent_id: str | None = None
 
 
 class AgentOut(BaseModel):
@@ -47,6 +49,35 @@ class WebCallOut(BaseModel):
     call_id: str
 
 
+def _provision_retell_agent_if_configured(agent: Agent) -> None:
+    """
+    Crée automatiquement l'agent correspondant côté Retell (section 16), de
+    façon invisible pour le client — voir RetellProvider.provision_agent().
+
+    Résilience (section 29) : si Retell est injoignable ou en erreur, on ne
+    bloque JAMAIS la création de l'agent CallBoxAI — on journalise et on
+    laisse retell_agent_id vide ; le client peut continuer à travailler
+    (base de connaissances, campagnes...) même sans agent vocal actif, et un
+    administrateur pourra relancer le provisionnement plus tard.
+    """
+    if settings.voice_provider != "retell" or not settings.retell_api_key:
+        return
+
+    try:
+        from app.providers.voice.retell_provider import RetellProvider
+
+        provider = RetellProvider(api_key=settings.retell_api_key, agent_id="")
+        agent.retell_agent_id = provider.provision_agent(
+            name=agent.name,
+            system_prompt=agent.system_prompt or "",
+            language=agent.language,
+            model=settings.retell_default_llm_model,
+            voice_id=settings.retell_default_voice_id,
+        )
+    except Exception:
+        logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
+
+
 @router.post("/agents", response_model=AgentOut)
 def create_agent(
     payload: AgentCreate,
@@ -57,6 +88,11 @@ def create_agent(
     db.add(agent)
     db.commit()
     db.refresh(agent)
+
+    _provision_retell_agent_if_configured(agent)
+    db.commit()
+    db.refresh(agent)
+
     return agent
 
 
@@ -77,8 +113,8 @@ def create_test_web_call(
     """
     Démarre une session de test vocal en direct (Web Call, section 16) pour
     cet agent, via le navigateur — sans passer par Twilio ni par un numéro
-    de téléphone. Nécessite RETELL_API_KEY configuré ET un ID d'agent Retell
-    (sur l'agent lui-même, ou à défaut RETELL_AGENT_ID globalement).
+    de téléphone. Utilise l'agent Retell provisionné automatiquement à la
+    création (ou RETELL_AGENT_ID global en secours).
     """
     agent = db.query(Agent).filter(Agent.id == agent_id, Agent.organization_id == organization_id).first()
     if not agent:
@@ -94,7 +130,7 @@ def create_test_web_call(
     if not effective_retell_agent_id:
         raise HTTPException(
             status_code=400,
-            detail="Aucun agent Retell associé : renseignez retell_agent_id sur cet agent (ou RETELL_AGENT_ID globalement).",
+            detail="Aucun agent Retell associé pour l'instant (le provisionnement automatique a peut-être échoué — réessayez ou contactez le support).",
         )
 
     from app.providers.voice.retell_provider import RetellProvider

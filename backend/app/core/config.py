@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     # changez pas explicitement ces deux réglages en connaissance de cause.
     retell_api_key: str = ""
     retell_agent_id: str = ""
+    # Utilisés uniquement pour la création AUTOMATIQUE d'agents (section 16) :
+    # modèle LLM et voix par défaut appliqués à chaque agent créé côté Retell.
+    # "retell-Cimo" est une voix anglophone de démonstration — à remplacer par
+    # une voix francophone disponible dans votre compte Retell (onglet
+    # "Voices" du dashboard) avant toute mise en production réelle.
+    retell_default_llm_model: str = "gpt-4o-mini"
+    retell_default_voice_id: str = "retell-Cimo"
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""

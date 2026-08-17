@@ -324,7 +324,6 @@ export const api = {
       transfer_enabled?: boolean;
       transfer_number?: string;
       transfer_instructions?: string;
-      retell_agent_id?: string;
     }
   ) =>
     request<Agent>("/agents", {

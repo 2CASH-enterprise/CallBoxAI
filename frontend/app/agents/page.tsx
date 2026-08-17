@@ -21,7 +21,6 @@ export default function AgentsPage() {
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
     transfer_enabled: false, transfer_number: "", transfer_instructions: "",
-    retell_agent_id: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,7 +41,6 @@ export default function AgentsPage() {
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
         transfer_enabled: false, transfer_number: "", transfer_instructions: "",
-        retell_agent_id: "",
       });
       setModalOpen(false);
       load();
@@ -151,16 +149,6 @@ export default function AgentsPage() {
                 value={form.system_prompt}
                 onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
                 placeholder="Tu es l'assistant commercial de l'entreprise…"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="agent-retell-id">ID agent Retell (optionnel, pour le test vocal en direct)</label>
-              <input
-                id="agent-retell-id"
-                value={form.retell_agent_id}
-                onChange={(e) => setForm({ ...form, retell_agent_id: e.target.value })}
-                placeholder="agent_xxxxxxxxxxxx (créé dans le dashboard Retell)"
               />
             </div>
 

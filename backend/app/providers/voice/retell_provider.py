@@ -23,6 +23,19 @@ from app.providers.voice.base import VoiceProvider
 
 RETELL_API_BASE = "https://api.retellai.com"
 
+# Correspondance entre les langues de la plateforme (section 8) et les codes
+# de langue attendus par Retell. Le wolof n'a pas de support TTS/STT connu
+# chez Retell à ce jour : on retombe sur le français plutôt que d'échouer.
+_LANGUAGE_CODES = {
+    "fr": "fr-FR",
+    "en": "en-US",
+    "wo": "fr-FR",
+}
+
+
+def _language_code(language: str) -> str:
+    return _LANGUAGE_CODES.get(language, "fr-FR")
+
 
 class RetellProvider(VoiceProvider):
     def __init__(self, api_key: str, agent_id: str):
@@ -32,6 +45,51 @@ class RetellProvider(VoiceProvider):
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             timeout=30.0,
         )
+
+    def create_llm(self, general_prompt: str, model: str) -> dict:
+        """Crée le "cerveau" LLM de l'agent côté Retell (prompt système)."""
+        response = self._client.post(
+            "/create-retell-llm",
+            json={"model": model, "general_prompt": general_prompt},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def create_retell_agent(self, name: str, llm_id: str, voice_id: str, language: str | None = None) -> dict:
+        """Crée l'agent vocal côté Retell, attaché au LLM créé précédemment."""
+        payload = {
+            "response_engine": {"type": "retell-llm", "llm_id": llm_id},
+            "voice_id": voice_id,
+            "agent_name": name,
+        }
+        if language:
+            payload["language"] = language
+        response = self._client.post("/create-agent", json=payload)
+        response.raise_for_status()
+        return response.json()
+
+    def publish_agent(self, agent_id: str) -> dict:
+        """Publie la dernière version de l'agent pour la rendre effectivement appelable."""
+        response = self._client.post(f"/publish-agent/{agent_id}")
+        response.raise_for_status()
+        return response.json()
+
+    def provision_agent(self, name: str, system_prompt: str, language: str, model: str, voice_id: str) -> str:
+        """
+        Crée automatiquement, côté Retell, tout ce qu'il faut pour qu'un
+        agent CallBoxAI soit réellement appelable : le LLM (prompt), l'agent
+        vocal (voix), puis le publie. Retourne l'agent_id Retell résultant.
+
+        C'est cette méthode qui rend l'intégration Retell invisible pour le
+        client final (section 1 : "AI Contact Center as a Service") — il n'a
+        jamais besoin de connaître ni de manipuler le dashboard Retell.
+        """
+        llm = self.create_llm(general_prompt=system_prompt or f"Tu es {name}, un assistant vocal utile.", model=model)
+        agent = self.create_retell_agent(
+            name=name, llm_id=llm["llm_id"], voice_id=voice_id, language=_language_code(language)
+        )
+        self.publish_agent(agent["agent_id"])
+        return agent["agent_id"]
 
     def create_web_call(self, agent_id: str | None = None) -> dict:
         """
