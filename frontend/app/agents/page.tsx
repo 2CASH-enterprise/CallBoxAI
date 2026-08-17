@@ -22,7 +22,7 @@ export default function AgentsPage() {
   const load = () => {
     if (!currentOrg) return;
     setLoading(true);
-    api.listAgents(currentOrg.id).then(setAgents).finally(() => setLoading(false));
+    api.listAgents(currentOrg.organization_id).then(setAgents).finally(() => setLoading(false));
   };
 
   useEffect(load, [currentOrg]);
@@ -32,7 +32,7 @@ export default function AgentsPage() {
     if (!currentOrg || !form.name.trim()) return;
     setSubmitting(true);
     try {
-      await api.createAgent(currentOrg.id, form);
+      await api.createAgent(currentOrg.organization_id, form);
       setForm({ name: "", objective: "", system_prompt: "", language: "fr" });
       setModalOpen(false);
       load();

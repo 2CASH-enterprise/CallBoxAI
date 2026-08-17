@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, Distributor, DistributorClient, DistributorDashboard, Commission } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
 import { KpiCard } from "@/components/KpiCard";
 import styles from "./distributors.module.css";
 
 export default function DistributorsPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const isSuperAdmin = !!user?.is_super_admin;
+  const ownDistributorId = user?.distributor_id || null;
+
   const [distributors, setDistributors] = useState<Distributor[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DistributorDashboard | null>(null);
@@ -15,18 +22,34 @@ export default function DistributorsPage() {
   const [calculating, setCalculating] = useState(false);
 
   const [showNewDistributor, setShowNewDistributor] = useState(false);
-  const [newDist, setNewDist] = useState({ name: "", email: "", country: "", commission_rate: "10" });
+  const [newDist, setNewDist] = useState({ name: "", email: "", password: "", country: "", commission_rate: "10" });
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
 
+  // Garde-fou : cette page est réservée au Super Admin et aux Distributeurs
+  // (section 39.4). Le Sidebar cache déjà le lien, ceci protège aussi l'accès
+  // direct par URL.
+  useEffect(() => {
+    if (user && !isSuperAdmin && !ownDistributorId) {
+      router.replace("/dashboard");
+    }
+  }, [user, isSuperAdmin, ownDistributorId, router]);
+
   const loadDistributors = () => {
-    api.listDistributors().then((list) => {
-      setDistributors(list);
-      if (!selectedId && list.length > 0) setSelectedId(list[0].id);
-    });
+    if (isSuperAdmin) {
+      // Super Admin : peut parcourir tous les distributeurs.
+      api.listDistributors().then((list) => {
+        setDistributors(list);
+        if (!selectedId && list.length > 0) setSelectedId(list[0].id);
+      });
+    } else if (ownDistributorId) {
+      // Distributeur : accès direct à SON portefeuille uniquement, pas de
+      // liste (l'endpoint /distributors est réservé au Super Admin).
+      setSelectedId(ownDistributorId);
+    }
   };
 
-  useEffect(loadDistributors, []);
+  useEffect(loadDistributors, [isSuperAdmin, ownDistributorId]);
 
   const loadDetail = () => {
     if (!selectedId) return;
@@ -48,14 +71,15 @@ export default function DistributorsPage() {
 
   async function handleCreateDistributor(e: React.FormEvent) {
     e.preventDefault();
-    if (!newDist.name.trim() || !newDist.email.trim()) return;
+    if (!newDist.name.trim() || !newDist.email.trim() || newDist.password.length < 8) return;
     const created = await api.createDistributor({
       name: newDist.name.trim(),
       email: newDist.email.trim(),
+      password: newDist.password,
       country: newDist.country.trim() || undefined,
       commission_rate: parseFloat(newDist.commission_rate) || 10,
     });
-    setNewDist({ name: "", email: "", country: "", commission_rate: "10" });
+    setNewDist({ name: "", email: "", password: "", country: "", commission_rate: "10" });
     setShowNewDistributor(false);
     setDistributors((prev) => [...prev, created]);
     setSelectedId(created.id);
@@ -87,7 +111,8 @@ export default function DistributorsPage() {
         <h1 className={styles.title}>Distributeurs</h1>
       </div>
 
-      <div className={styles.layout}>
+      <div className={isSuperAdmin ? styles.layout : undefined}>
+        {isSuperAdmin && (
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
             <span>Portefeuille</span>
@@ -109,6 +134,14 @@ export default function DistributorsPage() {
                 type="email"
                 value={newDist.email}
                 onChange={(e) => setNewDist({ ...newDist, email: e.target.value })}
+                required
+              />
+              <input
+                placeholder="Mot de passe (8 caractères min.)"
+                type="password"
+                minLength={8}
+                value={newDist.password}
+                onChange={(e) => setNewDist({ ...newDist, password: e.target.value })}
                 required
               />
               <input
@@ -141,6 +174,7 @@ export default function DistributorsPage() {
             ))
           )}
         </div>
+        )}
 
         <div>
           {!selectedId ? (

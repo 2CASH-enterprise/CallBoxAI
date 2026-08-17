@@ -45,3 +45,43 @@ def client(db_session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+# ---------- Aides d'authentification, réutilisées par tous les tests ----------
+
+import uuid  # noqa: E402
+
+
+def auth_headers(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def register_user(client, email: str | None = None, org_name: str = "Entreprise Test", password: str = "password123"):
+    """Inscrit un nouvel utilisateur + son organisation, retourne (token, organization_id)."""
+    email = email or f"user-{uuid.uuid4().hex[:8]}@example.com"
+    r = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "full_name": "Utilisateur Test",
+            "organization_name": org_name,
+        },
+    )
+    assert r.status_code == 200, r.text
+    token = r.json()["access_token"]
+
+    me = client.get("/auth/me", headers=auth_headers(token)).json()
+    org_id = me["memberships"][0]["organization_id"]
+    return token, org_id
+
+
+def create_super_admin(client, email: str | None = None, password: str = "password123"):
+    """Crée le Super Admin (une seule fois par base de test) et retourne son token."""
+    email = email or f"admin-{uuid.uuid4().hex[:8]}@example.com"
+    r = client.post(
+        "/auth/bootstrap-super-admin",
+        json={"email": email, "password": password, "full_name": "Super Admin"},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["access_token"]

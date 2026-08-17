@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
+import { AuthProvider } from "@/lib/AuthContext";
 import { OrganizationProvider } from "@/lib/OrganizationContext";
-import { Sidebar } from "@/components/Sidebar";
-import { TopBar } from "@/components/TopBar";
+import { AppShell } from "@/components/AppShell";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -26,15 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
-        <OrganizationProvider>
-          <div style={{ display: "flex", minHeight: "100vh" }}>
-            <Sidebar />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <TopBar />
-              <main style={{ flex: 1, padding: "28px 32px" }}>{children}</main>
-            </div>
-          </div>
-        </OrganizationProvider>
+        <AuthProvider>
+          <OrganizationProvider>
+            <AppShell>{children}</AppShell>
+          </OrganizationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

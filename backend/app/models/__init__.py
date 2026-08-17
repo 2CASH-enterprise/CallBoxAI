@@ -5,6 +5,8 @@ from app.models.contact import Contact
 from app.models.call import Call
 from app.models.kyc import KYCDossier, KYCDocument
 from app.models.commission import Commission
+from app.models.user import User
+from app.models.organization_membership import OrganizationMembership
 
 __all__ = [
     "Organization",
@@ -15,4 +17,6 @@ __all__ = [
     "KYCDossier",
     "KYCDocument",
     "Commission",
+    "User",
+    "OrganizationMembership",
 ]

@@ -17,7 +17,7 @@ export default function CallsPage() {
   const load = () => {
     if (!currentOrg) return;
     setLoading(true);
-    Promise.all([api.listCalls(currentOrg.id), api.listAgents(currentOrg.id)])
+    Promise.all([api.listCalls(currentOrg.organization_id), api.listAgents(currentOrg.organization_id)])
       .then(([c, a]) => {
         setCalls(c);
         setAgents(a);
@@ -32,7 +32,7 @@ export default function CallsPage() {
     if (!currentOrg || !selectedAgent) return;
     setSimulating(true);
     try {
-      await api.createCall(currentOrg.id, {
+      await api.createCall(currentOrg.organization_id, {
         agent_id: selectedAgent,
         to_number: toNumber,
         from_number: "+221780000000",

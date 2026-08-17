@@ -3,16 +3,17 @@ Vérifie le pipeline complet d'appel en mode Mock (section 40.3) :
 appel -> agent IA -> transcript -> résumé -> enregistrement en base.
 Aucun compte Twilio/Retell n'est nécessaire pour que ce test passe.
 """
+from tests.conftest import auth_headers, register_user
 
 
 def test_full_call_pipeline_with_mock_providers(client):
-    org = client.post("/organizations", json={"name": "Entreprise Test"}).json()
-    org_id = org["id"]
+    token, org_id = register_user(client)
+    headers = {**auth_headers(token), "x-organization-id": org_id}
 
     agent = client.post(
         "/agents",
         json={"name": "Agent commercial", "system_prompt": "Tu es un agent commercial."},
-        headers={"x-organization-id": org_id},
+        headers=headers,
     ).json()
 
     response = client.post(
@@ -23,7 +24,7 @@ def test_full_call_pipeline_with_mock_providers(client):
             "from_number": "+221780000000",
             "direction": "outbound",
         },
-        headers={"x-organization-id": org_id},
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -33,22 +34,22 @@ def test_full_call_pipeline_with_mock_providers(client):
     assert call["transcript"] is not None
     assert call["summary"] is not None
 
-    # Vérifie que l'appel apparait bien dans le dashboard de l'entreprise
-    calls_list = client.get("/calls", headers={"x-organization-id": org_id}).json()
+    calls_list = client.get("/calls", headers=headers).json()
     assert len(calls_list) == 1
 
 
 def test_call_rejected_for_unknown_agent_in_organization(client):
-    org_a = client.post("/organizations", json={"name": "Entreprise A"}).json()
-    org_b = client.post("/organizations", json={"name": "Entreprise B"}).json()
+    token_a, org_a_id = register_user(client, org_name="Entreprise A")
+    token_b, org_b_id = register_user(client, org_name="Entreprise B")
 
     agent_a = client.post(
         "/agents",
         json={"name": "Agent A"},
-        headers={"x-organization-id": org_a["id"]},
+        headers={**auth_headers(token_a), "x-organization-id": org_a_id},
     ).json()
 
-    # Entreprise B tente d'utiliser un agent qui appartient à Entreprise A -> refusé
+    # Entreprise B (avec un token valide et membre de B) tente d'utiliser un
+    # agent qui appartient à Entreprise A -> refusé
     response = client.post(
         "/calls",
         json={
@@ -56,6 +57,6 @@ def test_call_rejected_for_unknown_agent_in_organization(client):
             "to_number": "+221770000000",
             "from_number": "+221780000000",
         },
-        headers={"x-organization-id": org_b["id"]},
+        headers={**auth_headers(token_b), "x-organization-id": org_b_id},
     )
     assert response.status_code == 404

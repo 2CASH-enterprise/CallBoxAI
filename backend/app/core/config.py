@@ -20,6 +20,12 @@ class Settings(BaseSettings):
 
     environment: str = "development"
 
+    # Clé de signature des tokens JWT (section 24 du cahier des charges).
+    # IMPORTANT : valeur par défaut UNIQUEMENT pour le développement local.
+    # En production, définir SECRET_KEY dans les variables d'environnement
+    # avec une vraie valeur aléatoire et secrète (ex. `openssl rand -hex 32`).
+    secret_key: str = "dev-secret-key-do-not-use-in-production-change-me"
+
     class Config:
         env_file = ".env"
 

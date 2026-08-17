@@ -1,11 +1,26 @@
 /**
  * Client API minimal vers le backend FastAPI.
- * L'organization_id est transmis en header (voir app/api/routes/agents.py
- * côté backend) — sera remplacé par un vrai JWT lors de l'implémentation
- * de l'authentification (section 24 du cahier des charges).
+ * Le token JWT (section 24 du cahier des charges) est lu depuis le
+ * localStorage et attaché automatiquement à chaque requête protégée.
+ * x-organization-id sélectionne QUELLE organisation du user est visée ; le
+ * backend vérifie toujours que le user y a vraiment accès.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const TOKEN_STORAGE_KEY = "callboxai:access-token";
+
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function setStoredToken(token: string) {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+export function clearStoredToken() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
 
 export class ApiError extends Error {
   status: number;
@@ -17,9 +32,9 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  options: RequestInit & { organizationId?: string } = {}
+  options: RequestInit & { organizationId?: string; skipAuth?: boolean } = {}
 ): Promise<T> {
-  const { organizationId, headers, ...rest } = options;
+  const { organizationId, skipAuth, headers, ...rest } = options;
 
   const finalHeaders: Record<string, string> = {
     "Content-Type": "application/json",
@@ -27,6 +42,12 @@ async function request<T>(
   };
   if (organizationId) {
     finalHeaders["x-organization-id"] = organizationId;
+  }
+  if (!skipAuth) {
+    const token = getStoredToken();
+    if (token) {
+      finalHeaders["Authorization"] = `Bearer ${token}`;
+    }
   }
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -115,13 +136,35 @@ export interface Commission {
   status: string;
 }
 
+export interface Membership {
+  organization_id: string;
+  organization_name: string;
+  role: string;
+}
+
+export interface Me {
+  id: string;
+  email: string;
+  full_name: string | null;
+  is_super_admin: boolean;
+  distributor_id: string | null;
+  memberships: Membership[];
+}
+
 export const api = {
-  listOrganizations: () => request<Organization[]>("/organizations"),
-  createOrganization: (name: string, country?: string) =>
-    request<Organization>("/organizations", {
+  register: (data: { email: string; password: string; full_name: string; organization_name: string; organization_country?: string }) =>
+    request<{ access_token: string }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, country }),
+      skipAuth: true,
+      body: JSON.stringify(data),
     }),
+  login: (email: string, password: string) =>
+    request<{ access_token: string }>("/auth/login", {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({ email, password }),
+    }),
+  me: () => request<Me>("/auth/me"),
 
   listAgents: (organizationId: string) =>
     request<Agent[]>("/agents", { organizationId }),
@@ -160,7 +203,7 @@ export const api = {
     }),
 
   listDistributors: () => request<Distributor[]>("/distributors"),
-  createDistributor: (data: { name: string; email: string; country?: string; commission_rate?: number }) =>
+  createDistributor: (data: { name: string; email: string; password: string; country?: string; commission_rate?: number }) =>
     request<Distributor>("/distributors", {
       method: "POST",
       body: JSON.stringify(data),

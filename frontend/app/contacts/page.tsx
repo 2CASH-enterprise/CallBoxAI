@@ -16,7 +16,7 @@ export default function ContactsPage() {
   const load = () => {
     if (!currentOrg) return;
     setLoading(true);
-    api.listContacts(currentOrg.id).then(setContacts).finally(() => setLoading(false));
+    api.listContacts(currentOrg.organization_id).then(setContacts).finally(() => setLoading(false));
   };
 
   useEffect(load, [currentOrg]);
@@ -26,7 +26,7 @@ export default function ContactsPage() {
     if (!currentOrg || !phone.trim()) return;
     setSubmitting(true);
     try {
-      await api.createContact(currentOrg.id, { phone: phone.trim(), first_name: firstName.trim() || undefined });
+      await api.createContact(currentOrg.organization_id, { phone: phone.trim(), first_name: firstName.trim() || undefined });
       setPhone("");
       setFirstName("");
       load();

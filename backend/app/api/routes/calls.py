@@ -5,11 +5,12 @@ Démontre le pipeline complet : appel -> agent IA -> transcript -> résumé -> s
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import require_organization_access
 from app.models.call import Call
 from app.models.agent import Agent
 from app.providers.telephony.mock import MockTelephonyProvider
@@ -43,18 +44,11 @@ class CallOut(BaseModel):
         from_attributes = True
 
 
-def get_organization_id(x_organization_id: str = Header(...)) -> uuid.UUID:
-    try:
-        return uuid.UUID(x_organization_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="x-organization-id invalide")
-
-
 @router.post("/calls", response_model=CallOut)
 def create_call(
     payload: CallCreate,
     db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(get_organization_id),
+    organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     agent = db.query(Agent).filter(
         Agent.id == payload.agent_id,
@@ -97,6 +91,6 @@ def create_call(
 @router.get("/calls", response_model=list[CallOut])
 def list_calls(
     db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(get_organization_id),
+    organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     return db.query(Call).filter(Call.organization_id == organization_id).all()

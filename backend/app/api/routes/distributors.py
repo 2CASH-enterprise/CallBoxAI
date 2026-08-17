@@ -15,10 +15,12 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import require_super_admin, require_distributor_access, hash_password
 from app.models.distributor import Distributor
 from app.models.organization import Organization
 from app.models.call import Call
 from app.models.commission import Commission
+from app.models.user import User
 
 router = APIRouter()
 
@@ -34,6 +36,7 @@ MOCK_PRICE_PER_CALL_FCFA = 500.0
 class DistributorCreate(BaseModel):
     name: str
     email: EmailStr
+    password: str
     country: str | None = None
     commission_rate: float = 10.0
 
@@ -106,28 +109,57 @@ def current_period() -> str:
 # ---------- Endpoints ----------
 
 @router.post("/distributors", response_model=DistributorOut)
-def create_distributor(payload: DistributorCreate, db: Session = Depends(get_db)):
-    """Création d'un distributeur — action Super Admin (section 22)."""
-    existing = db.query(Distributor).filter(Distributor.email == payload.email).first()
-    if existing:
+def create_distributor(
+    payload: DistributorCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """
+    Création d'un distributeur — réservée au Super Admin (section 22).
+    Crée dans la foulée le compte de connexion (login) du distributeur,
+    pour qu'il puisse accéder à son propre Dashboard (section 39).
+    """
+    if db.query(Distributor).filter(Distributor.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Un distributeur avec cet email existe déjà")
+    if db.query(User).filter(User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Un compte utilisateur existe déjà avec cet email")
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caractères")
 
-    distributor = Distributor(**payload.model_dump())
+    distributor = Distributor(
+        name=payload.name,
+        email=payload.email,
+        country=payload.country,
+        commission_rate=payload.commission_rate,
+    )
     db.add(distributor)
+    db.flush()
+
+    user = User(
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+        full_name=payload.name,
+        distributor_id=distributor.id,
+    )
+    db.add(user)
+
     db.commit()
     db.refresh(distributor)
     return distributor
 
 
 @router.get("/distributors", response_model=list[DistributorOut])
-def list_distributors(db: Session = Depends(get_db)):
+def list_distributors(db: Session = Depends(get_db), _admin: User = Depends(require_super_admin)):
     """Vue Super Admin : liste de tous les distributeurs."""
     return db.query(Distributor).all()
 
 
 @router.patch("/distributors/{distributor_id}/commission-rate", response_model=DistributorOut)
 def update_commission_rate(
-    distributor_id: uuid.UUID, payload: CommissionRateUpdate, db: Session = Depends(get_db)
+    distributor_id: uuid.UUID,
+    payload: CommissionRateUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
 ):
     distributor = get_distributor_or_404(distributor_id, db)
     distributor.commission_rate = payload.commission_rate
@@ -137,7 +169,11 @@ def update_commission_rate(
 
 
 @router.get("/distributors/{distributor_id}/clients", response_model=list[ClientOut])
-def list_distributor_clients(distributor_id: uuid.UUID, db: Session = Depends(get_db)):
+def list_distributor_clients(
+    distributor_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _access: uuid.UUID = Depends(require_distributor_access),
+):
     """
     Portefeuille de clients de ce distributeur uniquement — isolation stricte
     (section 3 et 39.2) : seules les organizations avec ce distributor_id.
@@ -147,7 +183,12 @@ def list_distributor_clients(distributor_id: uuid.UUID, db: Session = Depends(ge
 
 
 @router.post("/distributors/{distributor_id}/clients", response_model=ClientOut)
-def onboard_client(distributor_id: uuid.UUID, payload: ClientCreate, db: Session = Depends(get_db)):
+def onboard_client(
+    distributor_id: uuid.UUID,
+    payload: ClientCreate,
+    db: Session = Depends(get_db),
+    _access: uuid.UUID = Depends(require_distributor_access),
+):
     """
     Onboarding : le distributeur crée un nouveau client, automatiquement
     rattaché à lui (section 39.3).
@@ -161,7 +202,11 @@ def onboard_client(distributor_id: uuid.UUID, payload: ClientCreate, db: Session
 
 
 @router.get("/distributors/{distributor_id}/dashboard", response_model=DashboardOut)
-def distributor_dashboard(distributor_id: uuid.UUID, db: Session = Depends(get_db)):
+def distributor_dashboard(
+    distributor_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _access: uuid.UUID = Depends(require_distributor_access),
+):
     distributor = get_distributor_or_404(distributor_id, db)
 
     client_ids = [
@@ -187,7 +232,11 @@ def distributor_dashboard(distributor_id: uuid.UUID, db: Session = Depends(get_d
 
 
 @router.post("/distributors/{distributor_id}/commissions/calculate", response_model=list[CommissionOut])
-def calculate_commissions(distributor_id: uuid.UUID, db: Session = Depends(get_db)):
+def calculate_commissions(
+    distributor_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _access: uuid.UUID = Depends(require_distributor_access),
+):
     """
     Calcule et enregistre la commission du mois en cours, par client, pour ce
     distributeur (section 39.5). Idempotent : recalculer le même mois met à
@@ -238,7 +287,11 @@ def calculate_commissions(distributor_id: uuid.UUID, db: Session = Depends(get_d
 
 
 @router.get("/distributors/{distributor_id}/commissions", response_model=list[CommissionOut])
-def list_commissions(distributor_id: uuid.UUID, db: Session = Depends(get_db)):
+def list_commissions(
+    distributor_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _access: uuid.UUID = Depends(require_distributor_access),
+):
     get_distributor_or_404(distributor_id, db)
     return (
         db.query(Commission)

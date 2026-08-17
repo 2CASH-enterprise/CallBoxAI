@@ -45,6 +45,52 @@
   color: var(--color-signal);
 }
 
+.userMenu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 20px;
+  border-left: 1px solid var(--color-line);
+}
+
+.userName {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roleTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+.logoutButton {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.logoutButton:hover {
+  border-color: var(--color-red);
+  color: var(--color-red);
+}
+
+.mockNote {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
 .newOrgForm {
   display: flex;
   gap: 8px;

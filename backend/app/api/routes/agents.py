@@ -4,11 +4,12 @@ section 3 du cahier des charges).
 """
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import require_organization_access
 from app.models.agent import Agent
 
 router = APIRouter()
@@ -32,22 +33,11 @@ class AgentOut(BaseModel):
         from_attributes = True
 
 
-def get_organization_id(x_organization_id: str = Header(...)) -> uuid.UUID:
-    """
-    Dans ce squelette, l'organization_id est passé en header pour simplifier.
-    En production, il sera dérivé du JWT d'authentification (section 24).
-    """
-    try:
-        return uuid.UUID(x_organization_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="x-organization-id invalide")
-
-
 @router.post("/agents", response_model=AgentOut)
 def create_agent(
     payload: AgentCreate,
     db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(get_organization_id),
+    organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     agent = Agent(organization_id=organization_id, **payload.model_dump())
     db.add(agent)
@@ -59,6 +49,6 @@ def create_agent(
 @router.get("/agents", response_model=list[AgentOut])
 def list_agents(
     db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(get_organization_id),
+    organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     return db.query(Agent).filter(Agent.organization_id == organization_id).all()

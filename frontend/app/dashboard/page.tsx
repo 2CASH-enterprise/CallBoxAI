@@ -8,7 +8,7 @@ import { Waveform } from "@/components/Waveform";
 import styles from "./dashboard.module.css";
 
 export default function DashboardPage() {
-  const { currentOrg, loading: orgLoading, error: orgError } = useOrganization();
+  const { currentOrg, loading: orgLoading } = useOrganization();
   const [calls, setCalls] = useState<Call[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,17 +16,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!currentOrg) return;
     setLoading(true);
-    Promise.all([api.listCalls(currentOrg.id), api.listAgents(currentOrg.id)])
+    Promise.all([api.listCalls(currentOrg.organization_id), api.listAgents(currentOrg.organization_id)])
       .then(([c, a]) => {
         setCalls(c);
         setAgents(a);
       })
       .finally(() => setLoading(false));
   }, [currentOrg]);
-
-  if (orgError) {
-    return <p className={styles.emptyState}>{orgError}</p>;
-  }
 
   if (orgLoading) {
     return <p className={styles.subtitle}>Chargement…</p>;
@@ -51,7 +47,7 @@ export default function DashboardPage() {
     <div>
       <div className={styles.header}>
         <h1 className={styles.title}>Tableau de bord</h1>
-        <span className={styles.subtitle}>{currentOrg.name}</span>
+        <span className={styles.subtitle}>{currentOrg.organization_name}</span>
       </div>
 
       <div className={styles.grid}>

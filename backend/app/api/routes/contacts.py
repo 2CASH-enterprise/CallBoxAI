@@ -3,11 +3,12 @@ Endpoints Contacts (CRM minimal — section 18 du cahier des charges).
 """
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import require_organization_access
 from app.models.contact import Contact
 
 router = APIRouter()
@@ -37,18 +38,11 @@ class ContactOut(BaseModel):
         from_attributes = True
 
 
-def get_organization_id(x_organization_id: str = Header(...)) -> uuid.UUID:
-    try:
-        return uuid.UUID(x_organization_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="x-organization-id invalide")
-
-
 @router.post("/contacts", response_model=ContactOut)
 def create_contact(
     payload: ContactCreate,
     db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(get_organization_id),
+    organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     if payload.status not in VALID_STATUSES:
         raise HTTPException(status_code=400, detail="Statut invalide")
@@ -62,6 +56,6 @@ def create_contact(
 @router.get("/contacts", response_model=list[ContactOut])
 def list_contacts(
     db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(get_organization_id),
+    organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     return db.query(Contact).filter(Contact.organization_id == organization_id).all()
