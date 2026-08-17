@@ -45,9 +45,9 @@ services:
       MESSAGING_PROVIDER: mock
       KYC_PROVIDER: manual_review
     ports:
-      # 8001 côté serveur (le port 8000 est déjà utilisé par un autre service
-      # sur ce serveur) -> 8000 côté conteneur (inchangé, pas besoin d'y toucher).
-      - "8001:8000"
+      # 8010 côté serveur (8000 et 8001 sont déjà pris par d'autres projets
+      # sur ce serveur) -> 8000 côté conteneur (inchangé).
+      - "8010:8000"
     depends_on:
       - postgres
       - redis
@@ -61,9 +61,10 @@ services:
         # Lu depuis le fichier .env à la racine du projet (voir .env.example).
         # Doit pointer vers l'adresse PUBLIQUE du serveur (pas "backend" ni
         # "localhost"), car cet appel part du navigateur de l'utilisateur.
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
     ports:
-      - "3000:3000"
+      # 3010 côté serveur (3000/3001/3002 déjà pris par d'autres projets).
+      - "3010:3000"
     depends_on:
       - backend
 
