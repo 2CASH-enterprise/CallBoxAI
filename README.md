@@ -35,15 +35,20 @@ docker compose ps        # vérifie que tous les services sont "Up"
 
 Une fois lancé :
 - Dashboard client : `http://VOTRE_IP_SERVEUR:3000`
-- API backend : `http://VOTRE_IP_SERVEUR:8000/docs`
+- API backend : `http://VOTRE_IP_SERVEUR:8001/docs`
 
-**Important** : les ports 3000 et 8000 doivent être ouverts sur le pare-feu du
+**Important** : les ports 3000 et 8001 doivent être ouverts sur le pare-feu du
 serveur (voir `ufw` ci-dessous) et, si votre hébergeur en propose un
-(ex. Hetzner Cloud), dans son pare-feu réseau également.
+(ex. Hetzner Cloud), dans son pare-feu réseau également. Le port 8001 (plutôt
+que 8000) est utilisé côté serveur pour éviter tout conflit avec un autre
+service déjà présent sur la machine — si votre serveur a d'autres ports déjà
+occupés, adaptez de la même façon les valeurs de `ports:` dans
+`docker-compose.yml` (partie gauche = port du serveur, partie droite =
+inchangée, port interne au conteneur).
 
 ```bash
 ufw allow 3000/tcp
-ufw allow 8000/tcp
+ufw allow 8001/tcp
 ```
 
 Pour arrêter : `docker compose down`. Pour voir les logs : `docker compose logs -f`.

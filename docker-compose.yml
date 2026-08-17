@@ -1,6 +1,5 @@
 # Environnement de développement 100% local et gratuit (section 40 du cahier des charges).
 # Aucun service payant n'est nécessaire pour faire tourner ce docker-compose.
-version: "3.8"
 
 services:
   postgres:
@@ -46,7 +45,9 @@ services:
       MESSAGING_PROVIDER: mock
       KYC_PROVIDER: manual_review
     ports:
-      - "8000:8000"
+      # 8001 côté serveur (le port 8000 est déjà utilisé par un autre service
+      # sur ce serveur) -> 8000 côté conteneur (inchangé, pas besoin d'y toucher).
+      - "8001:8000"
     depends_on:
       - postgres
       - redis
