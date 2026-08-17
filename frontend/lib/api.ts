@@ -121,6 +121,44 @@ export interface DistributorClient {
   created_at: string;
 }
 
+export interface AdminTotals {
+  organizations: number;
+  organizations_direct: number;
+  organizations_via_distributor: number;
+  distributors: number;
+  agents: number;
+  calls_total: number;
+  calls_today: number;
+  users: number;
+}
+
+export interface AdminOrganizationSummary {
+  id: string;
+  name: string;
+  country: string | null;
+  distributor_name: string | null;
+  agents_count: number;
+  calls_count: number;
+  created_at: string;
+}
+
+export interface AdminDistributorSummary {
+  id: string;
+  name: string;
+  commission_rate: number;
+  clients_count: number;
+  calls_count: number;
+}
+
+export interface AdminDashboard {
+  totals: AdminTotals;
+  current_period: string;
+  estimated_revenue_current_period: number;
+  estimated_commissions_current_period: number;
+  organizations: AdminOrganizationSummary[];
+  distributors: AdminDistributorSummary[];
+}
+
 export interface DistributorDashboard {
   distributor: Distributor;
   total_clients: number;
@@ -229,6 +267,8 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+  getAdminDashboard: () => request<AdminDashboard>("/admin/dashboard"),
+
   getDistributorDashboard: (distributorId: string) =>
     request<DistributorDashboard>(`/distributors/${distributorId}/dashboard`),
   listDistributorClients: (distributorId: string) =>

@@ -24,7 +24,10 @@ export function Sidebar() {
   // menus opérationnels. Un Super Admin ou un Distributeur voit "Pilotage".
   // Section 6.1 du cahier des charges : rôles plateforme vs rôles par entreprise.
   const showClientLinks = (user?.memberships.length || 0) > 0;
-  const showPilotageLinks = user?.is_super_admin || !!user?.distributor_id;
+  const pilotageLinks = [
+    ...(user?.is_super_admin ? [{ href: "/admin", label: "Vue plateforme" }] : []),
+    ...(user?.is_super_admin || user?.distributor_id ? [{ href: "/distributors", label: "Distributeurs" }] : []),
+  ];
 
   const renderLinks = (items: typeof clientLinks) =>
     items.map((link) => {
@@ -59,7 +62,7 @@ export function Sidebar() {
         </>
       )}
 
-      {showPilotageLinks && (
+      {pilotageLinks.length > 0 && (
         <>
           <div className={styles.navLabel}>Pilotage</div>
           <nav className={styles.nav}>{renderLinks(pilotageLinks)}</nav>

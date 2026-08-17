@@ -22,14 +22,11 @@ from app.models.organization_membership import OrganizationMembership
 from app.models.call import Call
 from app.models.commission import Commission
 from app.models.user import User
+from app.core.pricing import MOCK_PRICE_PER_CALL_FCFA
 
 router = APIRouter()
 
-# Placeholder MVP : en attendant le vrai moteur de billing (sections 20-21),
-# on calcule un chiffre d'affaires simulé à partir d'un prix fixe par appel.
-# À remplacer par la vraie consommation facturée du client une fois le moteur
-# de billing branché.
-MOCK_PRICE_PER_CALL_FCFA = 500.0
+# Voir app.core.pricing pour le détail de ce placeholder MVP.
 
 
 # ---------- Schémas ----------

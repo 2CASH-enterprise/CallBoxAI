@@ -1,0 +1,105 @@
+.header {
+  margin-bottom: 20px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.subtitle {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.splitGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.sectionHeader {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr 1fr;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 13px;
+  align-items: center;
+}
+
+.row:last-child { border-bottom: none; }
+
+.distRow {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 13px;
+  align-items: center;
+}
+
+.distRow:last-child { border-bottom: none; }
+
+.rowHead {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  background: var(--color-bg);
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  width: fit-content;
+}
+
+.badgeDirect { background: var(--color-signal-soft); color: var(--color-signal); }
+.badgeDistributor { background: var(--color-amber-soft); color: var(--color-amber); }
+
+.emptyState {
+  padding: 30px 20px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--color-muted);
+  padding: 14px 20px;
+  font-style: italic;
+}
