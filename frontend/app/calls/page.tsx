@@ -90,10 +90,11 @@ export default function CallsPage() {
       </div>
 
       <div className={styles.table}>
-        <div className={`${styles.row} ${styles.rowHead}`} style={{ gridTemplateColumns: "90px 1fr 1fr 110px 130px" }}>
+        <div className={`${styles.row} ${styles.rowHead}`} style={{ gridTemplateColumns: "90px 1fr 1fr 130px 110px 130px" }}>
           <span>Sens</span>
           <span>Résumé</span>
           <span>Transcript</span>
+          <span>Qualification</span>
           <span>Statut</span>
           <span></span>
         </div>
@@ -103,10 +104,20 @@ export default function CallsPage() {
           <div className={styles.emptyState}>Aucun appel enregistré pour l'instant.</div>
         ) : (
           calls.map((call) => (
-            <div key={call.id} className={styles.row} style={{ gridTemplateColumns: "90px 1fr 1fr 110px 130px" }}>
+            <div key={call.id} className={styles.row} style={{ gridTemplateColumns: "90px 1fr 1fr 130px 110px 130px" }}>
               <span>{call.direction === "inbound" ? "Entrant" : "Sortant"}</span>
               <span>{call.summary}</span>
               <span className={styles.transcript}>{call.transcript}</span>
+              <span style={{ fontSize: 12 }}>
+                {call.qualification && (
+                  <>
+                    {call.qualification}
+                    {call.score !== null && (
+                      <span style={{ color: "var(--color-muted)", fontFamily: "var(--font-mono)" }}> · {call.score}</span>
+                    )}
+                  </>
+                )}
+              </span>
               <span
                 style={
                   call.status === "transferred"

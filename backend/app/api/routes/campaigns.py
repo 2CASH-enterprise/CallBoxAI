@@ -20,17 +20,22 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import require_organization_access
+from app.core.call_pipeline import execute_mock_call
 from app.models.campaign import Campaign, CampaignTarget
 from app.models.contact import Contact
 from app.models.agent import Agent
 from app.models.call import Call
 from app.providers.telephony.mock import MockTelephonyProvider
 from app.providers.voice.mock import MockVoiceProvider
+from app.providers.embeddings.mock import MockEmbeddingProvider
+from app.providers.analytics.mock import MockAnalyticsProvider
 
 router = APIRouter()
 
 telephony_provider = MockTelephonyProvider()
 voice_provider = MockVoiceProvider()
+embedding_provider = MockEmbeddingProvider()
+analytics_provider = MockAnalyticsProvider()
 
 PHONE_REGEX = re.compile(r"^\+?[0-9]{8,15}$")
 DEFAULT_BATCH_SIZE = 10
@@ -284,25 +289,19 @@ def run_batch(
         outcome = random.choices(["completed", "no_answer", "failed"], weights=[70, 20, 10])[0]
 
         if outcome == "completed":
-            call_result = telephony_provider.make_call(
-                to_number=contact.phone, from_number="+221780000000", agent_id=str(agent.id)
-            )
-            voice_provider.start_conversation(call_result["provider_call_id"], agent.system_prompt or "")
-            call = Call(
+            call = execute_mock_call(
+                db=db,
                 organization_id=organization_id,
-                agent_id=agent.id,
-                contact_id=contact.id,
+                agent=agent,
+                to_number=contact.phone,
+                from_number="+221780000000",
+                telephony_provider=telephony_provider,
+                voice_provider=voice_provider,
+                embedding_provider=embedding_provider,
+                analytics_provider=analytics_provider,
                 direction="outbound",
-                status="completed",
-                provider="mock",
-                provider_call_id=call_result["provider_call_id"],
-                transcript=voice_provider.get_transcript(call_result["provider_call_id"]),
-                summary=voice_provider.get_summary(call_result["provider_call_id"]),
-                started_at=datetime.utcnow(),
-                ended_at=datetime.utcnow(),
+                contact_id=contact.id,
             )
-            db.add(call)
-            db.flush()
             target.call_id = call.id
             target.status = "completed"
             completed_count += 1

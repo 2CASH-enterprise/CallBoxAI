@@ -92,6 +92,7 @@ export interface Call {
   id: string;
   organization_id: string;
   agent_id: string;
+  contact_id: string | null;
   direction: string;
   status: string;
   provider: string;
@@ -101,6 +102,35 @@ export interface Call {
   knowledge_context: string | null;
   transferred_to: string | null;
   transferred_at: string | null;
+  intent: string | null;
+  qualification: string | null;
+  sentiment: string | null;
+  score: number | null;
+  action_taken: string | null;
+}
+
+export interface AnalyticsBreakdownItem {
+  label: string;
+  count: number;
+}
+
+export interface AgentPerformance {
+  agent_id: string;
+  agent_name: string;
+  calls_count: number;
+  avg_score: number | null;
+}
+
+export interface AnalyticsSummary {
+  total_calls: number;
+  avg_score: number | null;
+  qualification_rate: number;
+  appointment_rate: number;
+  transfer_rate: number;
+  by_intent: AnalyticsBreakdownItem[];
+  by_qualification: AnalyticsBreakdownItem[];
+  by_sentiment: AnalyticsBreakdownItem[];
+  by_agent: AgentPerformance[];
 }
 
 export interface KnowledgeDocument {
@@ -305,7 +335,7 @@ export const api = {
     request<Call[]>("/calls", { organizationId }),
   createCall: (
     organizationId: string,
-    data: { agent_id: string; to_number: string; from_number: string; direction?: string }
+    data: { agent_id: string; to_number: string; from_number: string; direction?: string; contact_id?: string }
   ) =>
     request<Call>("/calls", {
       method: "POST",
@@ -318,6 +348,9 @@ export const api = {
       organizationId,
       body: JSON.stringify({ destination }),
     }),
+
+  getAnalyticsSummary: (organizationId: string) =>
+    request<AnalyticsSummary>("/analytics/summary", { organizationId }),
 
   listCampaigns: (organizationId: string) =>
     request<Campaign[]>("/campaigns", { organizationId }),

@@ -1,9 +1,9 @@
 """
 Endpoints Calls — utilise les providers Mock par défaut (section 40.3).
-Démontre le pipeline complet : appel -> agent IA -> base de connaissances ->
-transfert éventuel -> transcript -> résumé -> stockage.
+La logique du pipeline d'appel (téléphonie, RAG, transfert, classification,
+mise à jour CRM) est centralisée dans app.core.call_pipeline, partagée avec
+le traitement de campagnes (section 13).
 """
-import random
 import uuid
 from datetime import datetime
 
@@ -13,25 +13,21 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import require_organization_access
-from app.core.rag import retrieve_top_chunks
+from app.core.call_pipeline import execute_mock_call, map_contact_status
 from app.models.call import Call
 from app.models.agent import Agent
+from app.models.contact import Contact
 from app.providers.telephony.mock import MockTelephonyProvider
 from app.providers.voice.mock import MockVoiceProvider
 from app.providers.embeddings.mock import MockEmbeddingProvider
+from app.providers.analytics.mock import MockAnalyticsProvider
 
 router = APIRouter()
 
 telephony_provider = MockTelephonyProvider()
 voice_provider = MockVoiceProvider()
 embedding_provider = MockEmbeddingProvider()
-
-# Probabilité qu'une conversation simulée nécessite un transfert humain, pour
-# les agents ayant le transfert activé (section 8 et 11 du cahier des
-# charges). En production, cette décision viendrait du LLM/de la conversation
-# réelle, pas du hasard — cette simulation permet de tester tout le pipeline
-# (statuts, dashboard, KPI "Transferts humains") sans compte Voice AI payant.
-AUTO_TRANSFER_PROBABILITY = 0.3
+analytics_provider = MockAnalyticsProvider()
 
 
 class CallCreate(BaseModel):
@@ -39,6 +35,7 @@ class CallCreate(BaseModel):
     to_number: str
     from_number: str
     direction: str = "outbound"  # inbound | outbound
+    contact_id: uuid.UUID | None = None  # si fourni, met à jour son statut CRM (section 18)
 
 
 class TransferRequest(BaseModel):
@@ -49,6 +46,7 @@ class CallOut(BaseModel):
     id: uuid.UUID
     organization_id: uuid.UUID
     agent_id: uuid.UUID
+    contact_id: uuid.UUID | None
     direction: str
     status: str
     provider: str
@@ -58,6 +56,11 @@ class CallOut(BaseModel):
     knowledge_context: str | None
     transferred_to: str | None
     transferred_at: datetime | None
+    intent: str | None
+    qualification: str | None
+    sentiment: str | None
+    score: int | None
+    action_taken: str | None
 
     class Config:
         from_attributes = True
@@ -83,61 +86,26 @@ def create_call(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent introuvable pour cette organisation")
 
-    # 1. Déclenchement de l'appel (téléphonie)
-    call_result = telephony_provider.make_call(
+    if payload.contact_id:
+        contact = db.query(Contact).filter(
+            Contact.id == payload.contact_id, Contact.organization_id == organization_id
+        ).first()
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    call = execute_mock_call(
+        db=db,
+        organization_id=organization_id,
+        agent=agent,
         to_number=payload.to_number,
         from_number=payload.from_number,
-        agent_id=str(agent.id),
-    )
-
-    # 2. Consultation de la base de connaissances (RAG, section 10) — l'agent
-    # récupère le contexte pertinent avant de démarrer la conversation.
-    knowledge_query = agent.objective or agent.system_prompt or agent.name
-    retrieved = retrieve_top_chunks(db, organization_id, knowledge_query, embedding_provider, top_k=1)
-    knowledge_context = retrieved[0]["content"] if retrieved else None
-
-    # 3. Conversation IA (voice provider)
-    voice_provider.start_conversation(call_id=call_result["provider_call_id"], system_prompt=agent.system_prompt or "")
-    transcript = voice_provider.get_transcript(call_result["provider_call_id"])
-    summary = voice_provider.get_summary(call_result["provider_call_id"])
-
-    if knowledge_context:
-        transcript += (
-            f"\n\n[Base de connaissances consultée — extrait de « {retrieved[0]['document_title']} »] "
-            f"{knowledge_context}"
-        )
-
-    # 4. Décision de transfert vers un opérateur humain (section 8/11) — ne
-    # se déclenche que si l'agent a le transfert activé ET un numéro configuré.
-    status = "completed"
-    transferred_to = None
-    transferred_at = None
-
-    if agent.transfer_enabled and agent.transfer_number and random.random() < AUTO_TRANSFER_PROBABILITY:
-        telephony_provider.transfer_call(call_result["provider_call_id"], agent.transfer_number)
-        status = "transferred"
-        transferred_to = agent.transfer_number
-        transferred_at = datetime.utcnow()
-        reason = agent.transfer_instructions or "demande dépassant les compétences de l'agent"
-        transcript += f"\n\n[Transfert vers un opérateur humain — {reason}] Appel transféré vers {agent.transfer_number}."
-
-    # 5. Enregistrement en base
-    call = Call(
-        organization_id=organization_id,
-        agent_id=agent.id,
+        telephony_provider=telephony_provider,
+        voice_provider=voice_provider,
+        embedding_provider=embedding_provider,
+        analytics_provider=analytics_provider,
         direction=payload.direction,
-        status=status,
-        provider="mock",
-        provider_call_id=call_result["provider_call_id"],
-        transcript=transcript,
-        summary=summary,
-        knowledge_context=knowledge_context,
-        transferred_to=transferred_to,
-        transferred_at=transferred_at,
-        started_at=datetime.utcnow(),
-        ended_at=datetime.utcnow(),
+        contact_id=payload.contact_id,
     )
-    db.add(call)
     db.commit()
     db.refresh(call)
     return call
@@ -171,6 +139,13 @@ def transfer_call(
     call.transferred_to = destination
     call.transferred_at = datetime.utcnow()
     call.transcript = (call.transcript or "") + f"\n\n[Transfert manuel vers un opérateur humain] Appel transféré vers {destination}."
+    call.qualification = "À suivre par un humain"
+    call.action_taken = "Transfert vers opérateur"
+
+    if call.contact_id:
+        contact = db.query(Contact).filter(Contact.id == call.contact_id).first()
+        if contact:
+            contact.status = map_contact_status(call.qualification, call.action_taken)
 
     db.commit()
     db.refresh(call)

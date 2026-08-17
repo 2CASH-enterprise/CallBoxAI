@@ -31,5 +31,12 @@ class Call(Base):
     transferred_to = Column(String, nullable=True)
     transferred_at = Column(DateTime, nullable=True)
 
+    # Classification automatique de l'appel (section 19 du cahier des charges)
+    intent = Column(String, nullable=True)
+    qualification = Column(String, nullable=True)  # Prospect chaud/tiède/Pas intéressé/À suivre...
+    sentiment = Column(String, nullable=True)  # Positif/Neutre/Négatif
+    score = Column(Integer, nullable=True)  # 0-100
+    action_taken = Column(String, nullable=True)  # Rendez-vous pris/Information transmise/...
+
     started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime, nullable=True)
