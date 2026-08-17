@@ -83,6 +83,9 @@ export interface Agent {
   name: string;
   objective: string | null;
   language: string;
+  transfer_enabled: boolean;
+  transfer_number: string | null;
+  transfer_instructions: string | null;
 }
 
 export interface Call {
@@ -96,6 +99,8 @@ export interface Call {
   transcript: string | null;
   summary: string | null;
   knowledge_context: string | null;
+  transferred_to: string | null;
+  transferred_at: string | null;
 }
 
 export interface KnowledgeDocument {
@@ -280,7 +285,15 @@ export const api = {
     request<Agent[]>("/agents", { organizationId }),
   createAgent: (
     organizationId: string,
-    data: { name: string; objective?: string; system_prompt?: string; language?: string }
+    data: {
+      name: string;
+      objective?: string;
+      system_prompt?: string;
+      language?: string;
+      transfer_enabled?: boolean;
+      transfer_number?: string;
+      transfer_instructions?: string;
+    }
   ) =>
     request<Agent>("/agents", {
       method: "POST",
@@ -298,6 +311,12 @@ export const api = {
       method: "POST",
       organizationId,
       body: JSON.stringify(data),
+    }),
+  transferCall: (organizationId: string, callId: string, destination?: string) =>
+    request<Call>(`/calls/${callId}/transfer`, {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify({ destination }),
     }),
 
   listCampaigns: (organizationId: string) =>

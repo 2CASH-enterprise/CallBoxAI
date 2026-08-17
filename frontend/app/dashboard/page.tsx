@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const inbound = calls.filter((c) => c.direction === "inbound").length;
   const outbound = calls.filter((c) => c.direction === "outbound").length;
   const completed = calls.filter((c) => c.status === "completed").length;
+  const transferred = calls.filter((c) => c.status === "transferred").length;
 
   return (
     <div>
@@ -55,6 +56,7 @@ export default function DashboardPage() {
         <KpiCard label="Entrants" value={inbound} />
         <KpiCard label="Sortants" value={outbound} />
         <KpiCard label="Réussis" value={completed} />
+        <KpiCard label="Transferts humains" value={transferred} />
         <KpiCard label="Agents actifs" value={agents.length} />
       </div>
 

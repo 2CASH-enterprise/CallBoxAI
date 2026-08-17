@@ -20,6 +20,9 @@ class AgentCreate(BaseModel):
     objective: str | None = None
     language: str = "fr"
     system_prompt: str | None = None
+    transfer_enabled: bool = False
+    transfer_number: str | None = None
+    transfer_instructions: str | None = None
 
 
 class AgentOut(BaseModel):
@@ -28,6 +31,9 @@ class AgentOut(BaseModel):
     name: str
     objective: str | None = None
     language: str
+    transfer_enabled: bool
+    transfer_number: str | None
+    transfer_instructions: str | None
 
     class Config:
         from_attributes = True

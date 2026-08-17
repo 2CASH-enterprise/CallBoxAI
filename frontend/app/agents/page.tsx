@@ -16,7 +16,10 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", objective: "", system_prompt: "", language: "fr" });
+  const [form, setForm] = useState({
+    name: "", objective: "", system_prompt: "", language: "fr",
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const load = () => {
@@ -33,7 +36,10 @@ export default function AgentsPage() {
     setSubmitting(true);
     try {
       await api.createAgent(currentOrg.organization_id, form);
-      setForm({ name: "", objective: "", system_prompt: "", language: "fr" });
+      setForm({
+        name: "", objective: "", system_prompt: "", language: "fr",
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "",
+      });
       setModalOpen(false);
       load();
     } finally {
@@ -67,6 +73,11 @@ export default function AgentsPage() {
               <div className={styles.cardName}>{agent.name}</div>
               <div className={styles.cardObjective}>{agent.objective || "Objectif non défini"}</div>
               <span className={styles.langTag}>{agent.language}</span>
+              {agent.transfer_enabled && (
+                <span className={styles.langTag} style={{ marginLeft: 6, background: "var(--color-amber-soft)", color: "var(--color-amber)" }}>
+                  Transfert activé
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -121,6 +132,40 @@ export default function AgentsPage() {
                 placeholder="Tu es l'assistant commercial de l'entreprise…"
               />
             </div>
+
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.transfer_enabled}
+                  onChange={(e) => setForm({ ...form, transfer_enabled: e.target.checked })}
+                />
+                Activer le transfert vers un opérateur humain
+              </label>
+            </div>
+
+            {form.transfer_enabled && (
+              <>
+                <div>
+                  <label htmlFor="agent-transfer-number">Numéro de l'opérateur</label>
+                  <input
+                    id="agent-transfer-number"
+                    value={form.transfer_number}
+                    onChange={(e) => setForm({ ...form, transfer_number: e.target.value })}
+                    placeholder="+221339000000"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="agent-transfer-instructions">Dans quels cas transférer ? (optionnel)</label>
+                  <input
+                    id="agent-transfer-instructions"
+                    value={form.transfer_instructions}
+                    onChange={(e) => setForm({ ...form, transfer_instructions: e.target.value })}
+                    placeholder="Ex. demande de remboursement, réclamation complexe"
+                  />
+                </div>
+              </>
+            )}
 
             <div className={styles.modalActions}>
               <button type="button" className={styles.cancelButton} onClick={() => setModalOpen(false)}>

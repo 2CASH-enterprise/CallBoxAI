@@ -13,6 +13,7 @@ export default function CallsPage() {
   const [toNumber, setToNumber] = useState("+221770000000");
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
+  const [transferringId, setTransferringId] = useState<string | null>(null);
 
   const load = () => {
     if (!currentOrg) return;
@@ -41,6 +42,19 @@ export default function CallsPage() {
       load();
     } finally {
       setSimulating(false);
+    }
+  }
+
+  async function handleTransfer(callId: string) {
+    if (!currentOrg) return;
+    setTransferringId(callId);
+    try {
+      await api.transferCall(currentOrg.organization_id, callId);
+      load();
+    } catch (e) {
+      alert("Transfert impossible : aucun numéro de transfert configuré sur l'agent de cet appel.");
+    } finally {
+      setTransferringId(null);
     }
   }
 
@@ -76,11 +90,12 @@ export default function CallsPage() {
       </div>
 
       <div className={styles.table}>
-        <div className={`${styles.row} ${styles.rowHead}`}>
+        <div className={`${styles.row} ${styles.rowHead}`} style={{ gridTemplateColumns: "90px 1fr 1fr 110px 130px" }}>
           <span>Sens</span>
           <span>Résumé</span>
           <span>Transcript</span>
           <span>Statut</span>
+          <span></span>
         </div>
         {loading ? (
           <div className={styles.emptyState}>Chargement…</div>
@@ -88,11 +103,36 @@ export default function CallsPage() {
           <div className={styles.emptyState}>Aucun appel enregistré pour l'instant.</div>
         ) : (
           calls.map((call) => (
-            <div key={call.id} className={styles.row}>
+            <div key={call.id} className={styles.row} style={{ gridTemplateColumns: "90px 1fr 1fr 110px 130px" }}>
               <span>{call.direction === "inbound" ? "Entrant" : "Sortant"}</span>
               <span>{call.summary}</span>
               <span className={styles.transcript}>{call.transcript}</span>
-              <span>{call.status}</span>
+              <span
+                style={
+                  call.status === "transferred"
+                    ? { color: "var(--color-amber)", fontFamily: "var(--font-mono)", fontSize: 12 }
+                    : { fontFamily: "var(--font-mono)", fontSize: 12 }
+                }
+              >
+                {call.status === "transferred" ? `Transféré → ${call.transferred_to}` : call.status}
+              </span>
+              <span>
+                {call.status !== "transferred" && (
+                  <button
+                    onClick={() => handleTransfer(call.id)}
+                    disabled={transferringId === call.id}
+                    style={{
+                      border: "1px solid var(--color-line)",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "5px 10px",
+                      fontSize: 12,
+                      background: "transparent",
+                    }}
+                  >
+                    {transferringId === call.id ? "…" : "Transférer"}
+                  </button>
+                )}
+              </span>
             </div>
           ))
         )}

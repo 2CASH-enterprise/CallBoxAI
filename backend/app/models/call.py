@@ -27,5 +27,9 @@ class Call(Base):
     summary = Column(Text, nullable=True)
     knowledge_context = Column(Text, nullable=True)  # extrait de la base de connaissances consulté (section 10)
 
+    # Transfert vers un opérateur humain (section 8 et 11 du cahier des charges)
+    transferred_to = Column(String, nullable=True)
+    transferred_at = Column(DateTime, nullable=True)
+
     started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime, nullable=True)
