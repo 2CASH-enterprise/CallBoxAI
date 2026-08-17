@@ -25,15 +25,14 @@ from app.models.campaign import Campaign, CampaignTarget
 from app.models.contact import Contact
 from app.models.agent import Agent
 from app.models.call import Call
-from app.providers.telephony.mock import MockTelephonyProvider
-from app.providers.voice.mock import MockVoiceProvider
+from app.core.providers import get_telephony_provider, get_voice_provider
 from app.providers.embeddings.mock import MockEmbeddingProvider
 from app.providers.analytics.mock import MockAnalyticsProvider
 
 router = APIRouter()
 
-telephony_provider = MockTelephonyProvider()
-voice_provider = MockVoiceProvider()
+telephony_provider = get_telephony_provider()
+voice_provider = get_voice_provider()
 embedding_provider = MockEmbeddingProvider()
 analytics_provider = MockAnalyticsProvider()
 

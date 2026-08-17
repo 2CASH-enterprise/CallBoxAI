@@ -18,6 +18,17 @@ class Settings(BaseSettings):
     messaging_provider: str = "mock"
     kyc_provider: str = "manual_review"
 
+    # Identifiants des fournisseurs réels (section 16 du cahier des charges).
+    # Vides par défaut : tant qu'ils ne sont pas renseignés ET que
+    # telephony_provider/voice_provider ne valent pas "twilio"/"retell",
+    # AUCUN appel réel n'est déclenché — donc AUCUN coût tant que vous ne
+    # changez pas explicitement ces deux réglages en connaissance de cause.
+    retell_api_key: str = ""
+    retell_agent_id: str = ""
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""
+
     environment: str = "development"
 
     # Clé de signature des tokens JWT (section 24 du cahier des charges).
