@@ -4,19 +4,22 @@
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
       POSTGRES_DB: app
-    # Pas de "ports" ici : le backend accède à Postgres via le réseau Docker
-    # interne (nom de service "postgres"), pas besoin de l'exposer à l'extérieur.
-    # C'est aussi plus sûr : une base de données ne doit jamais être ouverte sur internet.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
-    # Idem : pas d'exposition publique nécessaire pour Celery/le backend.
+    restart: unless-stopped
 
   minio:
     image: minio/minio
@@ -45,12 +48,13 @@ services:
       MESSAGING_PROVIDER: mock
       KYC_PROVIDER: manual_review
     ports:
-      # 8010 côté serveur (8000 et 8001 sont déjà pris par d'autres projets
-      # sur ce serveur) -> 8000 côté conteneur (inchangé).
       - "8010:8000"
+    restart: unless-stopped
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - ./backend:/app
 
@@ -58,13 +62,10 @@ services:
     build:
       context: ./frontend
       args:
-        # Lu depuis le fichier .env à la racine du projet (voir .env.example).
-        # Doit pointer vers l'adresse PUBLIQUE du serveur (pas "backend" ni
-        # "localhost"), car cet appel part du navigateur de l'utilisateur.
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
     ports:
-      # 3010 côté serveur (3000/3001/3002 déjà pris par d'autres projets).
       - "3010:3000"
+    restart: unless-stopped
     depends_on:
       - backend
 
