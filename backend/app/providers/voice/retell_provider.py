@@ -72,7 +72,15 @@ class RetellProvider(VoiceProvider):
         """Publie la dernière version de l'agent pour la rendre effectivement appelable."""
         response = self._client.post(f"/publish-agent/{agent_id}")
         response.raise_for_status()
-        return response.json()
+        # Certaines réponses de succès de cet endpoint arrivent sans corps
+        # (ou avec un corps non-JSON) — on ne bloque pas là-dessus, la
+        # valeur de retour n'est de toute façon pas utilisée par provision_agent.
+        if not response.content:
+            return {}
+        try:
+            return response.json()
+        except ValueError:
+            return {}
 
     def provision_agent(self, name: str, system_prompt: str, language: str, model: str, voice_id: str) -> str:
         """

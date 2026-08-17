@@ -109,3 +109,36 @@ def test_retell_provider_provision_agent_orchestrates_correctly(mock_post):
 
     publish_call = mock_post.call_args_list[2]
     assert publish_call[0][0] == "/publish-agent/agent_fake456"
+
+
+@patch("httpx.Client.post")
+def test_retell_provider_provision_agent_handles_empty_publish_response(mock_post):
+    """
+    Reproduit le bug réel rencontré en production : /publish-agent renvoie
+    parfois un corps vide, ce qui ne doit jamais faire planter le
+    provisionnement (l'agent_id est déjà connu à ce stade).
+    """
+    from unittest.mock import MagicMock
+    from app.providers.voice.retell_provider import RetellProvider
+
+    llm_response = MagicMock()
+    llm_response.json.return_value = {"llm_id": "llm_fake123"}
+    llm_response.raise_for_status.return_value = None
+
+    agent_response = MagicMock()
+    agent_response.json.return_value = {"agent_id": "agent_fake456", "is_published": False}
+    agent_response.raise_for_status.return_value = None
+
+    publish_response = MagicMock()
+    publish_response.raise_for_status.return_value = None
+    publish_response.content = b""  # corps vide, comme observé en réel
+
+    mock_post.side_effect = [llm_response, agent_response, publish_response]
+
+    provider = RetellProvider(api_key="fake_key", agent_id="")
+    result = provider.provision_agent(
+        name="Agent test", system_prompt="Prompt", language="fr",
+        model="gpt-4o-mini", voice_id="retell-Cimo",
+    )
+
+    assert result == "agent_fake456"  # ne plante pas, retourne bien l'agent_id
