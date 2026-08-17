@@ -7,6 +7,7 @@ from app.models.kyc import KYCDossier, KYCDocument
 from app.models.commission import Commission
 from app.models.user import User
 from app.models.organization_membership import OrganizationMembership
+from app.models.campaign import Campaign, CampaignTarget
 
 __all__ = [
     "Organization",
@@ -19,4 +20,6 @@ __all__ = [
     "Commission",
     "User",
     "OrganizationMembership",
+    "Campaign",
+    "CampaignTarget",
 ]

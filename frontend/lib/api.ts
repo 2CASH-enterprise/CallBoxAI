@@ -36,8 +36,12 @@ async function request<T>(
 ): Promise<T> {
   const { organizationId, skipAuth, headers, ...rest } = options;
 
+  const isFormData = typeof FormData !== "undefined" && rest.body instanceof FormData;
+
   const finalHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
+    // Pour un FormData (upload de fichier), le navigateur doit fixer lui-même
+    // le Content-Type (avec la "boundary" multipart) — ne pas le forcer ici.
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(headers as Record<string, string>),
   };
   if (organizationId) {
@@ -91,6 +95,45 @@ export interface Call {
   provider_call_id: string | null;
   transcript: string | null;
   summary: string | null;
+}
+
+export interface CampaignStats {
+  total: number;
+  pending: number;
+  completed: number;
+  no_answer: number;
+  failed: number;
+}
+
+export interface Campaign {
+  id: string;
+  organization_id: string;
+  agent_id: string;
+  name: string;
+  status: string;
+  schedule_start: string;
+  schedule_end: string;
+  max_attempts: number;
+  created_at: string;
+  started_at: string | null;
+}
+
+export interface CampaignDetail extends Campaign {
+  stats: CampaignStats;
+}
+
+export interface ImportSummary {
+  imported: number;
+  skipped_invalid_phone: number;
+  total_targets: number;
+}
+
+export interface BatchResult {
+  processed: number;
+  completed: number;
+  no_answer: number;
+  failed: number;
+  message: string | null;
 }
 
 export interface Contact {
@@ -238,6 +281,35 @@ export const api = {
       organizationId,
       body: JSON.stringify(data),
     }),
+
+  listCampaigns: (organizationId: string) =>
+    request<Campaign[]>("/campaigns", { organizationId }),
+  createCampaign: (
+    organizationId: string,
+    data: { name: string; agent_id: string; schedule_start: string; schedule_end: string; max_attempts: number }
+  ) =>
+    request<Campaign>("/campaigns", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  getCampaign: (organizationId: string, campaignId: string) =>
+    request<CampaignDetail>(`/campaigns/${campaignId}`, { organizationId }),
+  importCampaignContacts: (organizationId: string, campaignId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<ImportSummary>(`/campaigns/${campaignId}/import`, {
+      method: "POST",
+      organizationId,
+      body: formData,
+    });
+  },
+  startCampaign: (organizationId: string, campaignId: string) =>
+    request<Campaign>(`/campaigns/${campaignId}/start`, { method: "POST", organizationId }),
+  pauseCampaign: (organizationId: string, campaignId: string) =>
+    request<Campaign>(`/campaigns/${campaignId}/pause`, { method: "POST", organizationId }),
+  runCampaignBatch: (organizationId: string, campaignId: string) =>
+    request<BatchResult>(`/campaigns/${campaignId}/run-batch`, { method: "POST", organizationId }),
 
   listContacts: (organizationId: string) =>
     request<Contact[]>("/contacts", { organizationId }),

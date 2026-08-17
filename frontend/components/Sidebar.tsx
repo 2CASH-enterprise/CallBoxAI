@@ -10,6 +10,7 @@ const clientLinks = [
   { href: "/dashboard", label: "Tableau de bord" },
   { href: "/agents", label: "Agents IA" },
   { href: "/calls", label: "Appels" },
+  { href: "/campaigns", label: "Campagnes" },
   { href: "/contacts", label: "Contacts (CRM)" },
 ];
 
