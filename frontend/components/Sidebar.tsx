@@ -11,6 +11,8 @@ const links = [
   { href: "/contacts", label: "Contacts (CRM)" },
 ];
 
+const adminLinks = [{ href: "/distributors", label: "Distributeurs" }];
+
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -24,6 +26,22 @@ export function Sidebar() {
       <div className={styles.navLabel}>Opérations</div>
       <nav className={styles.nav}>
         {links.map((link) => {
+          const active = pathname?.startsWith(link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className={styles.navLabel}>Pilotage</div>
+      <nav className={styles.nav}>
+        {adminLinks.map((link) => {
           const active = pathname?.startsWith(link.href);
           return (
             <Link

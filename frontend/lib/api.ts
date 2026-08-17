@@ -81,6 +81,40 @@ export interface Contact {
   status: string;
 }
 
+export interface Distributor {
+  id: string;
+  name: string;
+  email: string;
+  country: string | null;
+  commission_rate: number;
+  status: string;
+}
+
+export interface DistributorClient {
+  id: string;
+  name: string;
+  country: string | null;
+  created_at: string;
+}
+
+export interface DistributorDashboard {
+  distributor: Distributor;
+  total_clients: number;
+  total_calls: number;
+  current_period: string;
+  estimated_commission_current_period: number;
+}
+
+export interface Commission {
+  id: string;
+  organization_id: string;
+  period: string;
+  base_amount: number;
+  rate_applied: number;
+  commission_amount: number;
+  status: string;
+}
+
 export const api = {
   listOrganizations: () => request<Organization[]>("/organizations"),
   createOrganization: (name: string, country?: string) =>
@@ -123,5 +157,32 @@ export const api = {
       method: "POST",
       organizationId,
       body: JSON.stringify(data),
+    }),
+
+  listDistributors: () => request<Distributor[]>("/distributors"),
+  createDistributor: (data: { name: string; email: string; country?: string; commission_rate?: number }) =>
+    request<Distributor>("/distributors", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateCommissionRate: (distributorId: string, commission_rate: number) =>
+    request<Distributor>(`/distributors/${distributorId}/commission-rate`, {
+      method: "PATCH",
+      body: JSON.stringify({ commission_rate }),
+    }),
+  getDistributorDashboard: (distributorId: string) =>
+    request<DistributorDashboard>(`/distributors/${distributorId}/dashboard`),
+  listDistributorClients: (distributorId: string) =>
+    request<DistributorClient[]>(`/distributors/${distributorId}/clients`),
+  onboardDistributorClient: (distributorId: string, data: { name: string; country?: string }) =>
+    request<DistributorClient>(`/distributors/${distributorId}/clients`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  listCommissions: (distributorId: string) =>
+    request<Commission[]>(`/distributors/${distributorId}/commissions`),
+  calculateCommissions: (distributorId: string) =>
+    request<Commission[]>(`/distributors/${distributorId}/commissions/calculate`, {
+      method: "POST",
     }),
 };
