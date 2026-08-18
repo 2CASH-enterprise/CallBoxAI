@@ -177,6 +177,8 @@
   padding: 24px;
   width: 420px;
   max-width: 90vw;
+  max-height: 88vh;
+  overflow-y: auto;
 }
 
 .modal h2 {
