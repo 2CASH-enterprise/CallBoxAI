@@ -92,11 +92,19 @@ export function RetellTestCallWidget({
           <span>
             {state === "idle" && "Prêt à démarrer"}
             {state === "connecting" && "Connexion en cours…"}
-            {state === "active" && (agentTalking ? "L'agent parle…" : "En écoute…")}
+            {state === "active" && (agentTalking ? "L'agent parle…" : "En écoute — parlez maintenant")}
             {state === "ended" && "Appel terminé"}
             {state === "error" && "Erreur"}
           </span>
         </div>
+
+        {state === "active" && (
+          <p className={styles.speakHint}>
+            Il n'y a pas de bouton pour répondre : parlez simplement dans votre micro, normalement,
+            comme un appel téléphonique classique. Si votre navigateur demande l'autorisation d'utiliser
+            le micro, acceptez-la.
+          </p>
+        )}
 
         <div className={styles.actions}>
           {state === "idle" || state === "ended" || state === "error" ? (

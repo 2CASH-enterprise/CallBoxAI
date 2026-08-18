@@ -34,4 +34,9 @@ class Agent(Base):
     # globale) si défini.
     retell_agent_id = Column(String, nullable=True)
 
+    # Voix à utiliser pour cet agent (ex. "11labs-Charlotte", récupéré dans
+    # l'onglet "Voices" du dashboard Retell). Optionnel : si vide, la voix
+    # par défaut de la plateforme (RETELL_DEFAULT_VOICE_ID) est utilisée.
+    voice_id = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)

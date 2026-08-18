@@ -87,6 +87,7 @@ export interface Agent {
   transfer_number: string | null;
   transfer_instructions: string | null;
   retell_agent_id: string | null;
+  voice_id: string | null;
 }
 
 export interface Call {
@@ -348,10 +349,30 @@ export const api = {
       transfer_enabled?: boolean;
       transfer_number?: string;
       transfer_instructions?: string;
+      voice_id?: string;
     }
   ) =>
     request<Agent>("/agents", {
       method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  updateAgent: (
+    organizationId: string,
+    agentId: string,
+    data: Partial<{
+      name: string;
+      objective: string;
+      system_prompt: string;
+      language: string;
+      transfer_enabled: boolean;
+      transfer_number: string;
+      transfer_instructions: string;
+      voice_id: string;
+    }>
+  ) =>
+    request<Agent>(`/agents/${agentId}`, {
+      method: "PATCH",
       organizationId,
       body: JSON.stringify(data),
     }),

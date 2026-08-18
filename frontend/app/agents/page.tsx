@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Volume2, ExternalLink } from "lucide-react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent } from "@/lib/api";
 import { RetellTestCallWidget } from "@/components/RetellTestCallWidget";
@@ -19,9 +19,12 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [testingAgentId, setTestingAgentId] = useState<string | null>(null);
+  const [voiceEditAgentId, setVoiceEditAgentId] = useState<string | null>(null);
+  const [voiceEditValue, setVoiceEditValue] = useState("");
+  const [savingVoice, setSavingVoice] = useState(false);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
-    transfer_enabled: false, transfer_number: "", transfer_instructions: "",
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,6 +55,7 @@ export default function AgentsPage() {
       transfer_enabled: true,
       transfer_number: "+221339000000",
       transfer_instructions: "Négociation tarifaire complexe, réclamation, ou demande hors du champ commercial standard.",
+      voice_id: "",
     });
     setModalOpen(true);
   }
@@ -64,12 +68,29 @@ export default function AgentsPage() {
       await api.createAgent(currentOrg.organization_id, form);
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
-        transfer_enabled: false, transfer_number: "", transfer_instructions: "",
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "",
       });
       setModalOpen(false);
       load();
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function openVoiceEditor(agent: Agent) {
+    setVoiceEditAgentId(agent.id);
+    setVoiceEditValue(agent.voice_id || "");
+  }
+
+  async function handleSaveVoice() {
+    if (!currentOrg || !voiceEditAgentId || !voiceEditValue.trim()) return;
+    setSavingVoice(true);
+    try {
+      await api.updateAgent(currentOrg.organization_id, voiceEditAgentId, { voice_id: voiceEditValue.trim() });
+      setVoiceEditAgentId(null);
+      load();
+    } finally {
+      setSavingVoice(false);
     }
   }
 
@@ -110,7 +131,7 @@ export default function AgentsPage() {
                 </span>
               )}
               {agent.retell_agent_id && (
-                <div style={{ marginTop: 10 }}>
+                <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button
                     onClick={() => setTestingAgentId(agent.id)}
                     style={{
@@ -123,6 +144,23 @@ export default function AgentsPage() {
                     }}
                   >
                     Tester en direct (voix)
+                  </button>
+                  <button
+                    onClick={() => openVoiceEditor(agent)}
+                    title={agent.voice_id ? `Voix actuelle : ${agent.voice_id}` : "Voix par défaut de la plateforme"}
+                    style={{
+                      border: "1px solid var(--color-line)",
+                      color: "var(--color-muted)",
+                      background: "transparent",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <Volume2 size={12} /> Changer la voix
                   </button>
                 </div>
               )}
@@ -182,6 +220,24 @@ export default function AgentsPage() {
             </div>
 
             <div>
+              <label htmlFor="agent-voice">Voix (optionnel)</label>
+              <input
+                id="agent-voice"
+                value={form.voice_id}
+                onChange={(e) => setForm({ ...form, voice_id: e.target.value })}
+                placeholder="Ex. 11labs-Charlotte"
+              />
+              <p className={styles.voiceHint}>
+                Ouvrez l'onglet <strong>Voices</strong> du{" "}
+                <a href="https://dashboard.retellai.com" target="_blank" rel="noreferrer">
+                  dashboard Retell <ExternalLink size={11} style={{ verticalAlign: "-1px" }} />
+                </a>{" "}
+                , filtrez par langue française, écoutez un échantillon, puis collez ici l'identifiant de la voix
+                qui vous plaît. Laissez vide pour la voix par défaut.
+              </p>
+            </div>
+
+            <div>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
                   type="checkbox"
@@ -224,6 +280,36 @@ export default function AgentsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {voiceEditAgentId && (
+        <div className={styles.modalOverlay} onClick={() => setVoiceEditAgentId(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2>Changer la voix</h2>
+            <p className={styles.voiceHint} style={{ marginBottom: 12 }}>
+              Ouvrez l'onglet <strong>Voices</strong> du{" "}
+              <a href="https://dashboard.retellai.com" target="_blank" rel="noreferrer">
+                dashboard Retell <ExternalLink size={11} style={{ verticalAlign: "-1px" }} />
+              </a>{" "}
+              , filtrez par langue française, écoutez les échantillons, et collez ici l'identifiant de la voix
+              retenue. Le changement s'applique à partir du prochain test/appel.
+            </p>
+            <input
+              value={voiceEditValue}
+              onChange={(e) => setVoiceEditValue(e.target.value)}
+              placeholder="Ex. 11labs-Charlotte"
+              autoFocus
+            />
+            <div className={styles.modalActions}>
+              <button type="button" className={styles.cancelButton} onClick={() => setVoiceEditAgentId(null)}>
+                Annuler
+              </button>
+              <button type="button" className={styles.button} onClick={handleSaveVoice} disabled={savingVoice}>
+                {savingVoice ? "Enregistrement…" : "Enregistrer"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -27,6 +27,18 @@ class AgentCreate(BaseModel):
     transfer_enabled: bool = False
     transfer_number: str | None = None
     transfer_instructions: str | None = None
+    voice_id: str | None = None
+
+
+class AgentUpdate(BaseModel):
+    name: str | None = None
+    objective: str | None = None
+    language: str | None = None
+    system_prompt: str | None = None
+    transfer_enabled: bool | None = None
+    transfer_number: str | None = None
+    transfer_instructions: str | None = None
+    voice_id: str | None = None
 
 
 class AgentOut(BaseModel):
@@ -39,6 +51,7 @@ class AgentOut(BaseModel):
     transfer_number: str | None
     transfer_instructions: str | None
     retell_agent_id: str | None
+    voice_id: str | None
 
     class Config:
         from_attributes = True
@@ -72,7 +85,7 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
             system_prompt=agent.system_prompt or "",
             language=agent.language,
             model=settings.retell_default_llm_model,
-            voice_id=settings.retell_default_voice_id,
+            voice_id=agent.voice_id or settings.retell_default_voice_id,
         )
     except Exception:
         logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
@@ -102,6 +115,36 @@ def list_agents(
     organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     return db.query(Agent).filter(Agent.organization_id == organization_id).all()
+
+
+@router.patch("/agents/{agent_id}", response_model=AgentOut)
+def update_agent(
+    agent_id: uuid.UUID,
+    payload: AgentUpdate,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Met à jour un agent — notamment utile pour changer la voix (voice_id)
+    après coup, sans recréer l'agent. Si la voix, le prompt ou la langue
+    changent, l'agent Retell est re-provisionné automatiquement.
+    """
+    agent = db.query(Agent).filter(Agent.id == agent_id, Agent.organization_id == organization_id).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent introuvable pour cette organisation")
+
+    updates = payload.model_dump(exclude_unset=True)
+    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name"))
+
+    for field, value in updates.items():
+        setattr(agent, field, value)
+
+    if needs_reprovision:
+        _provision_retell_agent_if_configured(agent)
+
+    db.commit()
+    db.refresh(agent)
+    return agent
 
 
 @router.post("/agents/{agent_id}/test-call", response_model=WebCallOut)
