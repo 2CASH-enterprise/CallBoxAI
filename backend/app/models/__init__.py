@@ -12,6 +12,7 @@ from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
 from app.models.appointment import Appointment
 from app.models.message import Message
 from app.models.survey import Survey, SurveyResponse
+from app.models.ticket import Ticket
 
 __all__ = [
     "Organization",
@@ -32,4 +33,5 @@ __all__ = [
     "Message",
     "Survey",
     "SurveyResponse",
+    "Ticket",
 ]

@@ -30,6 +30,7 @@ class AgentCreate(BaseModel):
     voice_id: str | None = None
     business_hours_start: str | None = None
     business_hours_end: str | None = None
+    ticketing_enabled: bool = False
 
 
 class AgentUpdate(BaseModel):
@@ -43,6 +44,7 @@ class AgentUpdate(BaseModel):
     voice_id: str | None = None
     business_hours_start: str | None = None
     business_hours_end: str | None = None
+    ticketing_enabled: bool | None = None
 
 
 class AgentOut(BaseModel):
@@ -58,6 +60,7 @@ class AgentOut(BaseModel):
     voice_id: str | None
     business_hours_start: str | None
     business_hours_end: str | None
+    ticketing_enabled: bool
 
     class Config:
         from_attributes = True

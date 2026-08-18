@@ -46,4 +46,10 @@ class Agent(Base):
     business_hours_start = Column(String, nullable=True)  # ex. "08:00"
     business_hours_end = Column(String, nullable=True)  # ex. "18:00"
 
+    # Service client (section 1 et 12 du cahier des charges) : quand activé,
+    # chaque appel entrant (dans les horaires) génère automatiquement un
+    # ticket de suivi (catégorie, priorité, statut), plutôt que de rester un
+    # simple transcript non exploité.
+    ticketing_enabled = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)

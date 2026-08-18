@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Bot, Phone, Megaphone, BarChart3,
   BookOpen, Users, Globe, Network, Calendar, TrendingDown,
-  MessageSquare, ClipboardList, type LucideIcon,
+  MessageSquare, ClipboardList, LifeBuoy, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useBranding } from "@/lib/useBranding";
@@ -22,6 +22,7 @@ const clientLinks: NavItem[] = [
   { href: "/agents", label: "Agents IA", icon: Bot },
   { href: "/calls", label: "Appels", icon: Phone },
   { href: "/messages", label: "Messages", icon: MessageSquare },
+  { href: "/tickets", label: "Tickets", icon: LifeBuoy },
   { href: "/appointments", label: "Rendez-vous", icon: Calendar },
   { href: "/campaigns", label: "Campagnes", icon: Megaphone },
   { href: "/surveys", label: "Sondages", icon: ClipboardList },

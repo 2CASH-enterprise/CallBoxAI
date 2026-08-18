@@ -19,6 +19,7 @@ from app.models.call import Call
 from app.models.contact import Contact
 from app.models.appointment import Appointment
 from app.models.message import Message
+from app.models.ticket import Ticket
 from app.providers.telephony.base import TelephonyProvider
 from app.providers.voice.base import VoiceProvider
 from app.providers.embeddings.base import EmbeddingProvider
@@ -83,6 +84,15 @@ def is_within_business_hours(agent: Agent, now: datetime | None = None) -> bool:
     if start <= end:
         return start <= current <= end
     return current >= start or current <= end  # fenêtre à cheval sur minuit
+
+
+def _priority_from_sentiment(sentiment: str | None) -> str:
+    """Traduit le sentiment détecté en priorité de ticket (section 12)."""
+    if sentiment == "Négatif":
+        return "haute"
+    if sentiment == "Neutre":
+        return "normale"
+    return "basse"
 
 
 def execute_mock_call(
@@ -211,6 +221,24 @@ def execute_mock_call(
     )
     db.add(call)
     db.flush()
+
+    # Ticket de service client (section 1/12) : uniquement pour les appels
+    # entrants, et seulement si l'agent a le suivi de tickets activé — évite
+    # de polluer les autres cas d'usage (prospection, sondages...).
+    if agent.ticketing_enabled and direction == "inbound":
+        db.add(
+            Ticket(
+                organization_id=organization_id,
+                agent_id=agent.id,
+                call_id=call.id,
+                contact_id=contact_id,
+                subject=f"Appel du {call.started_at:%d/%m/%Y %H:%M}",
+                category=classification["intent"],
+                priority=_priority_from_sentiment(classification["sentiment"]),
+                status="ouvert",
+                description=summary,
+            )
+        )
 
     # Mise à jour automatique du statut CRM du contact (section 18)
     appointment = None

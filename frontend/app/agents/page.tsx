@@ -24,7 +24,7 @@ export default function AgentsPage() {
   const [savingVoice, setSavingVoice] = useState(false);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
-    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "",
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false,
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,6 +58,34 @@ export default function AgentsPage() {
       voice_id: "",
       business_hours_start: "",
       business_hours_end: "",
+      ticketing_enabled: false,
+    });
+    setModalOpen(true);
+  }
+
+  function useServiceClientTemplate() {
+    setForm({
+      name: "Agent Service Client",
+      objective: "Répondre aux demandes de niveau 1 et escalader si besoin",
+      system_prompt:
+        "Tu es l'assistant du service client de l'entreprise.\n\n" +
+        "Ton objectif est de répondre aux questions courantes (horaires, tarifs, suivi de dossier) " +
+        "en t'appuyant sur la base de connaissances, et de résoudre les demandes de premier niveau.\n\n" +
+        "Tu dois toujours :\n" +
+        "- être poli et rassurant, surtout si le client est mécontent ;\n" +
+        "- vérifier la base de connaissances avant de répondre ;\n" +
+        "- ne jamais inventer une information ;\n" +
+        "- consigner clairement le motif de l'appel pour le suivi ;\n" +
+        "- transférer au responsable dès que la demande dépasse tes compétences " +
+        "(réclamation grave, litige, demande juridique).",
+      language: "fr",
+      transfer_enabled: true,
+      transfer_number: "+221339000000",
+      transfer_instructions: "Réclamation grave, litige, ou demande dépassant le support de niveau 1.",
+      voice_id: "",
+      business_hours_start: "08:00",
+      business_hours_end: "18:00",
+      ticketing_enabled: true,
     });
     setModalOpen(true);
   }
@@ -70,7 +98,7 @@ export default function AgentsPage() {
       await api.createAgent(currentOrg.organization_id, form);
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
-        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "",
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false,
       });
       setModalOpen(false);
       load();
@@ -107,6 +135,9 @@ export default function AgentsPage() {
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-ghost" onClick={useProspectionTemplate}>
             <Sparkles size={14} /> Modèle : Prospection commerciale
+          </button>
+          <button className="btn btn-ghost" onClick={useServiceClientTemplate}>
+            <Sparkles size={14} /> Modèle : Service Client
           </button>
           <button className={styles.button} onClick={() => setModalOpen(true)}>
             + Créer un agent
@@ -257,6 +288,17 @@ export default function AgentsPage() {
                 En dehors de cette plage, un appel entrant déclenche automatiquement une prise de message
                 plutôt qu'une conversation. Laissez vide pour un agent disponible en permanence.
               </p>
+            </div>
+
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.ticketing_enabled}
+                  onChange={(e) => setForm({ ...form, ticketing_enabled: e.target.checked })}
+                />
+                Activer le service client (crée un ticket de suivi pour chaque appel entrant)
+              </label>
             </div>
 
             <div>

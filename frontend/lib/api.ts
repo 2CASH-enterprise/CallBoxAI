@@ -90,6 +90,23 @@ export interface Agent {
   voice_id: string | null;
   business_hours_start: string | null;
   business_hours_end: string | null;
+  ticketing_enabled: boolean;
+}
+
+export interface Ticket {
+  id: string;
+  organization_id: string;
+  agent_id: string;
+  call_id: string | null;
+  contact_id: string | null;
+  subject: string;
+  category: string | null;
+  priority: string;
+  status: string;
+  description: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Message {
@@ -398,6 +415,7 @@ export const api = {
       voice_id?: string;
       business_hours_start?: string;
       business_hours_end?: string;
+      ticketing_enabled?: boolean;
     }
   ) =>
     request<Agent>("/agents", {
@@ -419,6 +437,7 @@ export const api = {
       voice_id: string;
       business_hours_start: string;
       business_hours_end: string;
+      ticketing_enabled: boolean;
     }>
   ) =>
     request<Agent>(`/agents/${agentId}`, {
@@ -553,6 +572,19 @@ export const api = {
       method: "PATCH",
       organizationId,
       body: JSON.stringify({ status }),
+    }),
+
+  listTickets: (organizationId: string) =>
+    request<Ticket[]>("/tickets", { organizationId }),
+  updateTicket: (
+    organizationId: string,
+    ticketId: string,
+    data: Partial<{ status: string; priority: string; resolution_notes: string }>
+  ) =>
+    request<Ticket>(`/tickets/${ticketId}`, {
+      method: "PATCH",
+      organizationId,
+      body: JSON.stringify(data),
     }),
 
   listSurveys: (organizationId: string) =>
