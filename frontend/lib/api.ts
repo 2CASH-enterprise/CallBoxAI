@@ -433,6 +433,21 @@ export const api = {
       organizationId,
       body: JSON.stringify(data),
     }),
+  importContactsUpload: (organizationId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<ImportSummary>("/contacts/import/upload", {
+      method: "POST",
+      organizationId,
+      body: formData,
+    });
+  },
+  importContactsText: (organizationId: string, content: string) =>
+    request<ImportSummary>("/contacts/import/text", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify({ content }),
+    }),
 
   listDistributors: () => request<Distributor[]>("/distributors"),
   createDistributor: (data: { name: string; email: string; password: string; country?: string; commission_rate?: number }) =>

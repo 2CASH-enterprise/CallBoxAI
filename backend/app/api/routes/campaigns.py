@@ -7,10 +7,7 @@ pas encore branché — voir section 40 et le docker-compose.yml). Le
 comportement métier (statuts, retry, horaires) est le même ; seul le
 déclenchement change une fois Celery en place.
 """
-import csv
-import io
 import random
-import re
 import uuid
 from datetime import datetime, time
 
@@ -21,22 +18,27 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.core.call_pipeline import execute_mock_call
+from app.core.contacts_import import import_contacts_from_csv_text
 from app.models.campaign import Campaign, CampaignTarget
 from app.models.contact import Contact
 from app.models.agent import Agent
 from app.models.call import Call
-from app.core.providers import get_telephony_provider, get_voice_provider
+from app.providers.telephony.mock import MockTelephonyProvider
+from app.providers.voice.mock import MockVoiceProvider
 from app.providers.embeddings.mock import MockEmbeddingProvider
 from app.providers.analytics.mock import MockAnalyticsProvider
 
 router = APIRouter()
 
-telephony_provider = get_telephony_provider()
-voice_provider = get_voice_provider()
+# Toujours Mock, volontairement (même raisonnement que /calls — section 40) :
+# le traitement de campagne simule des issues variées (répondu/pas de
+# réponse/échec) et ne doit jamais dépendre d'un vrai provider, qui ne
+# pourrait pas produire ces résultats synchrones.
+telephony_provider = MockTelephonyProvider()
+voice_provider = MockVoiceProvider()
 embedding_provider = MockEmbeddingProvider()
 analytics_provider = MockAnalyticsProvider()
 
-PHONE_REGEX = re.compile(r"^\+?[0-9]{8,15}$")
 DEFAULT_BATCH_SIZE = 10
 
 
@@ -176,41 +178,24 @@ async def import_contacts(
     `first_name`, `last_name` (optionnelles). Les numéros invalides sont
     comptabilisés et ignorés plutôt que de faire échouer tout l'import.
     Les contacts sont créés (ou réutilisés s'ils existent déjà par numéro)
-    dans le CRM de l'organisation (section 18).
+    dans le CRM de l'organisation (section 18), via l'utilitaire partagé
+    avec l'import CRM direct (app.core.contacts_import).
     """
     campaign = get_campaign_or_404(campaign_id, organization_id, db)
 
-    raw = (await file.read()).decode("utf-8-sig")
-    reader = csv.DictReader(io.StringIO(raw))
+    raw = (await file.read()).decode("utf-8-sig", errors="replace")
+    shared_summary, contacts = import_contacts_from_csv_text(db, organization_id, raw)
 
-    imported = 0
-    skipped = 0
-
-    for row in reader:
-        phone = (row.get("phone") or "").strip()
-        if not PHONE_REGEX.match(phone):
-            skipped += 1
-            continue
-
-        contact = db.query(Contact).filter(
-            Contact.organization_id == organization_id, Contact.phone == phone
-        ).first()
-        if not contact:
-            contact = Contact(
-                organization_id=organization_id,
-                phone=phone,
-                first_name=(row.get("first_name") or "").strip() or None,
-                last_name=(row.get("last_name") or "").strip() or None,
-            )
-            db.add(contact)
-            db.flush()
-
+    for contact in contacts:
         db.add(CampaignTarget(campaign_id=campaign.id, contact_id=contact.id))
-        imported += 1
 
     db.commit()
     total_targets = db.query(CampaignTarget).filter(CampaignTarget.campaign_id == campaign.id).count()
-    return ImportSummary(imported=imported, skipped_invalid_phone=skipped, total_targets=total_targets)
+    return ImportSummary(
+        imported=shared_summary.imported,
+        skipped_invalid_phone=shared_summary.skipped_invalid_phone,
+        total_targets=total_targets,
+    )
 
 
 @router.post("/campaigns/{campaign_id}/start", response_model=CampaignOut)

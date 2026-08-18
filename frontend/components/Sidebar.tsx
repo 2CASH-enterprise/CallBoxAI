@@ -2,21 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard, Bot, Phone, Megaphone, BarChart3,
+  BookOpen, Users, Globe, Network, type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useBranding } from "@/lib/useBranding";
 import styles from "./Sidebar.module.css";
 
-const clientLinks = [
-  { href: "/dashboard", label: "Tableau de bord" },
-  { href: "/agents", label: "Agents IA" },
-  { href: "/calls", label: "Appels" },
-  { href: "/campaigns", label: "Campagnes" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/knowledge", label: "Base de connaissances" },
-  { href: "/contacts", label: "Contacts (CRM)" },
-];
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
 
-const pilotageLinks = [{ href: "/distributors", label: "Distributeurs" }];
+const clientLinks: NavItem[] = [
+  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/agents", label: "Agents IA", icon: Bot },
+  { href: "/calls", label: "Appels", icon: Phone },
+  { href: "/campaigns", label: "Campagnes", icon: Megaphone },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/knowledge", label: "Base de connaissances", icon: BookOpen },
+  { href: "/contacts", label: "Contacts (CRM)", icon: Users },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -27,21 +35,20 @@ export function Sidebar() {
   // menus opérationnels. Un Super Admin ou un Distributeur voit "Pilotage".
   // Section 6.1 du cahier des charges : rôles plateforme vs rôles par entreprise.
   const showClientLinks = (user?.memberships.length || 0) > 0;
-  const pilotageLinks = [
-    ...(user?.is_super_admin ? [{ href: "/admin", label: "Vue plateforme" }] : []),
-    ...(user?.is_super_admin || user?.distributor_id ? [{ href: "/distributors", label: "Distributeurs" }] : []),
+  const pilotageLinks: NavItem[] = [
+    ...(user?.is_super_admin ? [{ href: "/admin", label: "Vue plateforme", icon: Globe }] : []),
+    ...(user?.is_super_admin || user?.distributor_id
+      ? [{ href: "/distributors", label: "Distributeurs", icon: Network }]
+      : []),
   ];
 
-  const renderLinks = (items: typeof clientLinks) =>
-    items.map((link) => {
-      const active = pathname?.startsWith(link.href);
+  const renderLinks = (items: NavItem[]) =>
+    items.map(({ href, label, icon: Icon }) => {
+      const active = pathname?.startsWith(href);
       return (
-        <Link
-          key={link.href}
-          href={link.href}
-          className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}
-        >
-          {link.label}
+        <Link key={href} href={href} className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}>
+          <Icon size={16} strokeWidth={2} className={styles.navIcon} />
+          <span>{label}</span>
         </Link>
       );
     });
@@ -73,8 +80,8 @@ export function Sidebar() {
       )}
 
       <div className={styles.footer}>
-        Environnement : mock<br />
-        v0.1.0
+        <span className={styles.footerDot} />
+        Environnement mock · v0.1.0
       </div>
     </aside>
   );

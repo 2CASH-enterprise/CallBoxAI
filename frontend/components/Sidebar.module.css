@@ -1,36 +1,38 @@
 .sidebar {
-  width: 232px;
+  width: 240px;
   min-height: 100vh;
   background: var(--color-navy);
+  background-image: radial-gradient(circle at 15% 0%, rgba(110, 98, 229, 0.10), transparent 45%);
   color: #E7E9F2;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 22px 14px;
   position: sticky;
   top: 0;
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 0 8px 28px 8px;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 8px 26px 8px;
   font-family: var(--font-display);
 }
 
 .brandMark {
   color: var(--brand-color, var(--color-signal));
   font-size: 20px;
+  line-height: 1;
 }
 
 .brandLogo {
   height: 24px;
-  max-width: 140px;
+  max-width: 150px;
   object-fit: contain;
 }
 
 .brandName {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -38,24 +40,35 @@
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .navLink {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 9px 10px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
-  color: #AEB3C7;
+  font-size: 13.5px;
+  color: #9BA1BC;
   border-left: 2px solid transparent;
-  transition: color 120ms ease, background 120ms ease;
+  transition: color 140ms var(--ease-standard), background 140ms var(--ease-standard), transform 140ms var(--ease-standard);
+}
+
+.navIcon {
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: opacity 140ms var(--ease-standard);
 }
 
 .navLink:hover {
   color: #FFFFFF;
   background: var(--color-navy-soft);
+  transform: translateX(1px);
+}
+
+.navLink:hover .navIcon {
+  opacity: 1;
 }
 
 .navLinkActive {
@@ -65,20 +78,36 @@
   font-weight: 500;
 }
 
+.navLinkActive .navIcon {
+  opacity: 1;
+  color: var(--brand-color, var(--color-signal));
+}
+
 .navLabel {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #565C78;
-  padding: 20px 12px 6px 12px;
+  color: #4C5273;
+  padding: 20px 10px 7px 10px;
 }
 
 .footer {
   margin-top: auto;
-  padding: 16px 12px 4px 12px;
+  padding: 16px 10px 4px 10px;
   border-top: 1px solid var(--color-navy-line);
-  font-size: 11px;
-  color: #565C78;
+  font-size: 10.5px;
+  color: #4C5273;
   font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footerDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-signal);
+  flex-shrink: 0;
 }

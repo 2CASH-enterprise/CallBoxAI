@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Phone, PhoneIncoming, PhoneOutgoing, CheckCircle2, UserCheck2,
+  Bot, ArrowRight, PhoneCall,
+} from "lucide-react";
+import Link from "next/link";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Call, Agent } from "@/lib/api";
 import { KpiCard } from "@/components/KpiCard";
-import { Waveform } from "@/components/Waveform";
+import { SkeletonRow, Skeleton } from "@/components/Skeleton";
 import styles from "./dashboard.module.css";
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Bonjour";
+  if (hour < 18) return "Bon après-midi";
+  return "Bonsoir";
+}
 
 export default function DashboardPage() {
   const { currentOrg, loading: orgLoading } = useOrganization();
@@ -25,15 +37,24 @@ export default function DashboardPage() {
   }, [currentOrg]);
 
   if (orgLoading) {
-    return <p className={styles.subtitle}>Chargement…</p>;
+    return (
+      <div>
+        <Skeleton height={32} width={280} />
+        <div className={styles.grid} style={{ marginTop: 24 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} height={92} radius={12} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!currentOrg) {
     return (
       <div className={styles.section}>
         <div className={styles.emptyState}>
-          Aucune organisation pour l'instant. Créez-en une depuis la barre du
-          haut pour commencer.
+          <PhoneCall size={28} strokeWidth={1.5} className={styles.emptyIcon} />
+          <p>Aucune organisation pour l'instant. Créez-en une depuis la barre du haut pour commencer.</p>
         </div>
       </div>
     );
@@ -47,40 +68,54 @@ export default function DashboardPage() {
   return (
     <div>
       <div className={styles.header}>
-        <h1 className={styles.title}>Tableau de bord</h1>
-        <span className={styles.subtitle}>{currentOrg.organization_name}</span>
+        <div>
+          <p className={styles.eyebrow}>{greeting()}</p>
+          <h1 className={styles.title}>{currentOrg.organization_name}</h1>
+        </div>
+        <Link href="/calls" className="btn btn-signal">
+          <Phone size={14} /> Simuler un appel
+        </Link>
       </div>
 
       <div className={styles.grid}>
-        <KpiCard label="Appels (total)" value={calls.length} />
-        <KpiCard label="Entrants" value={inbound} />
-        <KpiCard label="Sortants" value={outbound} />
-        <KpiCard label="Réussis" value={completed} />
-        <KpiCard label="Transferts humains" value={transferred} />
-        <KpiCard label="Agents actifs" value={agents.length} />
+        <KpiCard label="Appels au total" value={calls.length} icon={Phone} accent="navy" />
+        <KpiCard label="Entrants" value={inbound} icon={PhoneIncoming} accent="signal" />
+        <KpiCard label="Sortants" value={outbound} icon={PhoneOutgoing} accent="violet" />
+        <KpiCard label="Réussis" value={completed} icon={CheckCircle2} accent="signal" />
+        <KpiCard label="Transferts humains" value={transferred} icon={UserCheck2} accent="amber" />
+        <KpiCard label="Agents actifs" value={agents.length} icon={Bot} accent="navy" />
       </div>
 
       <div className={styles.section}>
-        <div className={styles.sectionHeader}>Derniers appels</div>
+        <div className={styles.sectionHeader}>
+          <span>Derniers appels</span>
+          <Link href="/calls" className={styles.seeAll}>
+            Tout voir <ArrowRight size={13} />
+          </Link>
+        </div>
         {loading ? (
-          <div className={styles.emptyState}>Chargement…</div>
+          <>
+            <SkeletonRow /><SkeletonRow /><SkeletonRow />
+          </>
         ) : calls.length === 0 ? (
           <div className={styles.emptyState}>
-            Aucun appel pour l'instant. Rendez-vous sur la page « Appels »
-            pour en simuler un (mode Mock, sans coût).
+            <PhoneCall size={28} strokeWidth={1.5} className={styles.emptyIcon} />
+            <p>
+              Aucun appel pour l'instant. Rendez-vous sur la page « Appels » pour en simuler un
+              (mode Mock, sans coût).
+            </p>
           </div>
         ) : (
           calls.slice(0, 8).map((call) => (
             <div key={call.id} className={styles.callRow}>
               <span className={`${styles.badge} ${call.direction === "inbound" ? styles.badgeInbound : styles.badgeOutbound}`}>
+                {call.direction === "inbound" ? <PhoneIncoming size={12} /> : <PhoneOutgoing size={12} />}
                 {call.direction === "inbound" ? "Entrant" : "Sortant"}
               </span>
-              <span>{call.summary || "Sans résumé"}</span>
-              <span style={{ color: "var(--color-muted)", fontFamily: "var(--font-mono)", fontSize: 12 }}>
-                {call.provider}
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-signal)" }}>
-                <Waveform />
+              <span className={styles.callSummary}>{call.summary || "Sans résumé"}</span>
+              <span className={styles.callProvider}>{call.provider}</span>
+              <span className={`${styles.callStatus} ${call.status === "transferred" ? styles.callStatusAmber : styles.callStatusSignal}`}>
+                <span className={styles.liveDot} />
                 {call.status}
               </span>
             </div>
