@@ -27,11 +27,12 @@ class Settings(BaseSettings):
     retell_agent_id: str = ""
     # Utilisés uniquement pour la création AUTOMATIQUE d'agents (section 16) :
     # modèle LLM et voix par défaut appliqués à chaque agent créé côté Retell.
-    # "retell-Cimo" est une voix anglophone de démonstration — à remplacer par
-    # une voix francophone disponible dans votre compte Retell (onglet
-    # "Voices" du dashboard) avant toute mise en production réelle.
+    # "cartesia-Emma" : voix francophone validée en conditions réelles comme
+    # la plus naturelle pour ce cas d'usage (Sénégal/Congo-Brazzaville).
+    # Chaque agent peut définir sa propre voix (Agent.voice_id) pour
+    # remplacer ce réglage par défaut.
     retell_default_llm_model: str = "gpt-4o-mini"
-    retell_default_voice_id: str = "retell-Cimo"
+    retell_default_voice_id: str = "cartesia-Emma"
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""
