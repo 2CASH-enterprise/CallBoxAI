@@ -24,7 +24,7 @@ export default function AgentsPage() {
   const [savingVoice, setSavingVoice] = useState(false);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
-    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "",
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,6 +56,8 @@ export default function AgentsPage() {
       transfer_number: "+221339000000",
       transfer_instructions: "Négociation tarifaire complexe, réclamation, ou demande hors du champ commercial standard.",
       voice_id: "",
+      business_hours_start: "",
+      business_hours_end: "",
     });
     setModalOpen(true);
   }
@@ -68,7 +70,7 @@ export default function AgentsPage() {
       await api.createAgent(currentOrg.organization_id, form);
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
-        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "",
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "",
       });
       setModalOpen(false);
       load();
@@ -234,6 +236,26 @@ export default function AgentsPage() {
                 </a>{" "}
                 , filtrez par langue française, écoutez un échantillon, puis collez ici l'identifiant de la voix
                 qui vous plaît. Laissez vide pour la voix par défaut.
+              </p>
+            </div>
+
+            <div>
+              <label>Horaires d'ouverture (télé-secrétariat, optionnel)</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="time"
+                  value={form.business_hours_start}
+                  onChange={(e) => setForm({ ...form, business_hours_start: e.target.value })}
+                />
+                <input
+                  type="time"
+                  value={form.business_hours_end}
+                  onChange={(e) => setForm({ ...form, business_hours_end: e.target.value })}
+                />
+              </div>
+              <p className={styles.voiceHint}>
+                En dehors de cette plage, un appel entrant déclenche automatiquement une prise de message
+                plutôt qu'une conversation. Laissez vide pour un agent disponible en permanence.
               </p>
             </div>
 

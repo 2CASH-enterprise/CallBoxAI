@@ -88,6 +88,52 @@ export interface Agent {
   transfer_instructions: string | null;
   retell_agent_id: string | null;
   voice_id: string | null;
+  business_hours_start: string | null;
+  business_hours_end: string | null;
+}
+
+export interface Message {
+  id: string;
+  organization_id: string;
+  agent_id: string;
+  call_id: string | null;
+  contact_id: string | null;
+  caller_phone: string;
+  caller_name: string | null;
+  content: string;
+  urgent: boolean;
+  callback_requested: boolean;
+  status: string;
+  created_at: string;
+}
+
+export interface SurveyQuestion {
+  id: string;
+  text: string;
+  type: "choice" | "rating" | "open";
+  options?: string[];
+}
+
+export interface Survey {
+  id: string;
+  organization_id: string;
+  agent_id: string;
+  title: string;
+  questions: SurveyQuestion[];
+  created_at: string;
+}
+
+export interface SurveyQuestionResult {
+  question_id: string;
+  question_text: string;
+  type: string;
+  summary: Record<string, any>;
+}
+
+export interface SurveyResults {
+  survey_id: string;
+  total_responses: number;
+  results: SurveyQuestionResult[];
 }
 
 export interface Call {
@@ -350,6 +396,8 @@ export const api = {
       transfer_number?: string;
       transfer_instructions?: string;
       voice_id?: string;
+      business_hours_start?: string;
+      business_hours_end?: string;
     }
   ) =>
     request<Agent>("/agents", {
@@ -369,6 +417,8 @@ export const api = {
       transfer_number: string;
       transfer_instructions: string;
       voice_id: string;
+      business_hours_start: string;
+      business_hours_end: string;
     }>
   ) =>
     request<Agent>(`/agents/${agentId}`, {
@@ -495,6 +545,35 @@ export const api = {
     }),
   getPipeline: (organizationId: string) =>
     request<Pipeline>("/contacts/pipeline", { organizationId }),
+
+  listMessages: (organizationId: string) =>
+    request<Message[]>("/messages", { organizationId }),
+  updateMessage: (organizationId: string, messageId: string, status: string) =>
+    request<Message>(`/messages/${messageId}`, {
+      method: "PATCH",
+      organizationId,
+      body: JSON.stringify({ status }),
+    }),
+
+  listSurveys: (organizationId: string) =>
+    request<Survey[]>("/surveys", { organizationId }),
+  createSurvey: (organizationId: string, data: { title: string; agent_id: string; questions: SurveyQuestion[] }) =>
+    request<Survey>("/surveys", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  getSurvey: (organizationId: string, surveyId: string) =>
+    request<Survey>(`/surveys/${surveyId}`, { organizationId }),
+  callForSurvey: (organizationId: string, surveyId: string, data: { contact_id: string; to_number: string }) =>
+    request<{ id: string; answers: Record<string, any> }>(`/surveys/${surveyId}/call`, {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  getSurveyResults: (organizationId: string, surveyId: string) =>
+    request<SurveyResults>(`/surveys/${surveyId}/results`, { organizationId }),
+
   exportContacts: async (organizationId: string, status?: string) => {
     const token = getStoredToken();
     const query = status ? `?status=${encodeURIComponent(status)}` : "";

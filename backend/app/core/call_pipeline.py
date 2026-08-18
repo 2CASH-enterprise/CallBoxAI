@@ -9,7 +9,7 @@ modifier automatiquement le statut" du contact).
 """
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 from sqlalchemy.orm import Session
 
@@ -18,10 +18,24 @@ from app.models.agent import Agent
 from app.models.call import Call
 from app.models.contact import Contact
 from app.models.appointment import Appointment
+from app.models.message import Message
 from app.providers.telephony.base import TelephonyProvider
 from app.providers.voice.base import VoiceProvider
 from app.providers.embeddings.base import EmbeddingProvider
 from app.providers.analytics.base import AnalyticsProvider
+
+# Probabilité qu'un appel entrant hors horaires laisse un message "urgent"
+# (télé-secrétariat, section 12). Simulation — en production, ce serait
+# évalué par le LLM à partir du contenu réel de la demande.
+URGENT_MESSAGE_PROBABILITY = 0.2
+
+MOCK_MESSAGE_CONTENTS = [
+    "Souhaite être rappelé(e) au sujet d'une demande de devis.",
+    "Appelle pour un suivi de dossier en cours.",
+    "Demande d'information générale sur les services proposés.",
+    "Souhaite reprogrammer un rendez-vous existant.",
+    "Réclamation à traiter en priorité.",
+]
 
 # Probabilité qu'une conversation simulée nécessite un transfert humain, pour
 # les agents ayant le transfert activé (section 8 et 11). En production,
@@ -54,6 +68,23 @@ def _generate_mock_slot() -> datetime:
     return slot.replace(hour=hour, minute=random.choice([0, 30]), second=0, microsecond=0)
 
 
+def is_within_business_hours(agent: Agent, now: datetime | None = None) -> bool:
+    """
+    Télé-secrétariat (section 12) : un agent sans horaires configurés est
+    considéré disponible en permanence. Sinon, hors de la plage définie, un
+    appel entrant déclenche une prise de message plutôt qu'une conversation.
+    """
+    if not agent.business_hours_start or not agent.business_hours_end:
+        return True
+    now = now or datetime.utcnow()
+    start = time.fromisoformat(agent.business_hours_start)
+    end = time.fromisoformat(agent.business_hours_end)
+    current = now.time()
+    if start <= end:
+        return start <= current <= end
+    return current >= start or current <= end  # fenêtre à cheval sur minuit
+
+
 def execute_mock_call(
     db: Session,
     organization_id: uuid.UUID,
@@ -73,8 +104,58 @@ def execute_mock_call(
     l'objet Call. Ajouté à la session mais PAS committé : au code appelant de
     committer, ce qui permet de traiter un lot entier en une seule transaction
     (section 13/14 — campagnes).
+
+    Télé-secrétariat (section 12) : un appel ENTRANT reçu hors des horaires
+    d'ouverture de l'agent bascule automatiquement vers une prise de message
+    structurée, plutôt qu'une conversation normale (personne n'étant
+    disponible pour un transfert ou un rendez-vous en dehors des heures).
     """
     call_result = telephony_provider.make_call(to_number=to_number, from_number=from_number, agent_id=str(agent.id))
+
+    if direction == "inbound" and not is_within_business_hours(agent):
+        transcript = (
+            f"Agent : Bonjour, vous êtes bien chez {agent.name.replace('Agent ', '')}. "
+            "Nos bureaux sont actuellement fermés, souhaitez-vous laisser un message ?\n"
+            "Client : Oui, merci."
+        )
+        content = random.choice(MOCK_MESSAGE_CONTENTS)
+        urgent = random.random() < URGENT_MESSAGE_PROBABILITY
+
+        call = Call(
+            organization_id=organization_id,
+            agent_id=agent.id,
+            contact_id=contact_id,
+            direction=direction,
+            status="message_taken",
+            provider="mock",
+            provider_call_id=call_result["provider_call_id"],
+            transcript=transcript,
+            summary=f"Message pris hors horaires : {content}",
+            action_taken="Message pris",
+            started_at=datetime.utcnow(),
+            ended_at=datetime.utcnow(),
+        )
+        db.add(call)
+        db.flush()
+
+        contact = db.query(Contact).filter(Contact.id == contact_id).first() if contact_id else None
+        message = Message(
+            organization_id=organization_id,
+            agent_id=agent.id,
+            call_id=call.id,
+            contact_id=contact_id,
+            caller_phone=from_number,
+            caller_name=(f"{contact.first_name or ''} {contact.last_name or ''}".strip() or None) if contact else None,
+            content=content,
+            urgent=urgent,
+            callback_requested=True,
+            status="new",
+        )
+        db.add(message)
+        if contact:
+            contact.status = "À rappeler"
+
+        return call
 
     # Consultation de la base de connaissances (RAG, section 10)
     knowledge_query = agent.objective or agent.system_prompt or agent.name

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
-from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments
+from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys
 
 # Création des tables au démarrage (dev/tests uniquement ; en prod : migrations Alembic)
 Base.metadata.create_all(bind=engine)
@@ -37,3 +37,5 @@ app.include_router(knowledge.router)
 app.include_router(analytics.router)
 app.include_router(webhooks.router)
 app.include_router(appointments.router)
+app.include_router(messages.router)
+app.include_router(surveys.router)

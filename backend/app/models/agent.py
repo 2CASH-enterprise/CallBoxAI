@@ -39,4 +39,11 @@ class Agent(Base):
     # par défaut de la plateforme (RETELL_DEFAULT_VOICE_ID) est utilisée.
     voice_id = Column(String, nullable=True)
 
+    # Horaires d'ouverture (télé-secrétariat) : en dehors de cette plage, un
+    # appel entrant déclenche une prise de message plutôt qu'une conversation
+    # normale (section 12 : service client de niveau 1). Si les deux champs
+    # sont vides, l'agent est considéré disponible en permanence.
+    business_hours_start = Column(String, nullable=True)  # ex. "08:00"
+    business_hours_end = Column(String, nullable=True)  # ex. "18:00"
+
     created_at = Column(DateTime, default=datetime.utcnow)

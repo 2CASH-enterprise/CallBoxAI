@@ -28,6 +28,8 @@ class AgentCreate(BaseModel):
     transfer_number: str | None = None
     transfer_instructions: str | None = None
     voice_id: str | None = None
+    business_hours_start: str | None = None
+    business_hours_end: str | None = None
 
 
 class AgentUpdate(BaseModel):
@@ -39,6 +41,8 @@ class AgentUpdate(BaseModel):
     transfer_number: str | None = None
     transfer_instructions: str | None = None
     voice_id: str | None = None
+    business_hours_start: str | None = None
+    business_hours_end: str | None = None
 
 
 class AgentOut(BaseModel):
@@ -52,6 +56,8 @@ class AgentOut(BaseModel):
     transfer_instructions: str | None
     retell_agent_id: str | None
     voice_id: str | None
+    business_hours_start: str | None
+    business_hours_end: str | None
 
     class Config:
         from_attributes = True
