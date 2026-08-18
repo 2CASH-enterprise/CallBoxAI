@@ -182,6 +182,17 @@ export interface ImportSummary {
   total_targets: number;
 }
 
+export interface PipelineStage {
+  status: string;
+  count: number;
+}
+
+export interface Pipeline {
+  funnel: PipelineStage[];
+  side_buckets: PipelineStage[];
+  total_contacts: number;
+}
+
 export interface BatchResult {
   processed: number;
   completed: number;
@@ -461,6 +472,32 @@ export const api = {
       organizationId,
       body: JSON.stringify({ content }),
     }),
+  getPipeline: (organizationId: string) =>
+    request<Pipeline>("/contacts/pipeline", { organizationId }),
+  exportContacts: async (organizationId: string, status?: string) => {
+    const token = getStoredToken();
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    const response = await fetch(`${API_URL}/contacts/export${query}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "x-organization-id": organizationId,
+      },
+    });
+    if (!response.ok) throw new ApiError(await response.text(), response.status);
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="(.+)"/);
+    const filename = match ? match[1] : "leads.csv";
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 
   listAppointments: (organizationId: string) =>
     request<Appointment[]>("/appointments", { organizationId }),
