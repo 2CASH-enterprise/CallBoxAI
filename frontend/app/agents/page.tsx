@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent } from "@/lib/api";
 import { RetellTestCallWidget } from "@/components/RetellTestCallWidget";
@@ -32,6 +33,29 @@ export default function AgentsPage() {
 
   useEffect(load, [currentOrg]);
 
+  function useProspectionTemplate() {
+    setForm({
+      name: "Agent Prospection Commerciale",
+      objective: "Qualifier les prospects et prendre des rendez-vous",
+      system_prompt:
+        "Tu es l'assistant commercial de l'entreprise.\n\n" +
+        "Ton objectif est de qualifier les prospects et de prendre des rendez-vous.\n\n" +
+        "Tu dois toujours :\n" +
+        "- être poli ;\n" +
+        "- parler naturellement ;\n" +
+        "- poser les questions dans l'ordre : besoin, budget, échéance ;\n" +
+        "- ne jamais inventer une information ;\n" +
+        "- proposer un rendez-vous dès que le prospect montre de l'intérêt ;\n" +
+        "- transférer au responsable commercial lorsqu'une demande dépasse tes compétences " +
+        "(négociation tarifaire complexe, réclamation, demande hors sujet).",
+      language: "fr",
+      transfer_enabled: true,
+      transfer_number: "+221339000000",
+      transfer_instructions: "Négociation tarifaire complexe, réclamation, ou demande hors du champ commercial standard.",
+    });
+    setModalOpen(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!currentOrg || !form.name.trim()) return;
@@ -57,9 +81,14 @@ export default function AgentsPage() {
     <div>
       <div className={styles.header}>
         <h1 className={styles.title}>Agents IA</h1>
-        <button className={styles.button} onClick={() => setModalOpen(true)}>
-          + Créer un agent
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-ghost" onClick={useProspectionTemplate}>
+            <Sparkles size={14} /> Modèle : Prospection commerciale
+          </button>
+          <button className={styles.button} onClick={() => setModalOpen(true)}>
+            + Créer un agent
+          </button>
+        </div>
       </div>
 
       {loading ? (

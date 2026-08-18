@@ -9,7 +9,7 @@ modifier automatiquement le statut" du contact).
 """
 import random
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from app.core.rag import retrieve_top_chunks
 from app.models.agent import Agent
 from app.models.call import Call
 from app.models.contact import Contact
+from app.models.appointment import Appointment
 from app.providers.telephony.base import TelephonyProvider
 from app.providers.voice.base import VoiceProvider
 from app.providers.embeddings.base import EmbeddingProvider
@@ -39,6 +40,18 @@ def map_contact_status(qualification: str | None, action_taken: str | None) -> s
     if qualification in ("Prospect chaud", "Prospect tiède"):
         return "Intéressé"
     return "Contacté"
+
+
+def _generate_mock_slot() -> datetime:
+    """
+    Simule un créneau de rendez-vous proposé par l'agent (2 à 6 jours plus
+    tard, sur une plage horaire de bureau 9h-17h). En production, ce serait
+    déterminé par la disponibilité réelle (agenda connecté), pas simulé.
+    """
+    days_ahead = random.randint(2, 6)
+    hour = random.choice([9, 10, 11, 14, 15, 16])
+    slot = datetime.utcnow() + timedelta(days=days_ahead)
+    return slot.replace(hour=hour, minute=random.choice([0, 30]), second=0, microsecond=0)
 
 
 def execute_mock_call(
@@ -119,9 +132,24 @@ def execute_mock_call(
     db.flush()
 
     # Mise à jour automatique du statut CRM du contact (section 18)
+    appointment = None
     if contact_id:
         contact = db.query(Contact).filter(Contact.id == contact_id).first()
         if contact:
             contact.status = map_contact_status(classification["qualification"], classification["action_taken"])
+
+        # Prise de rendez-vous réelle (section 30 : POST /appointments), pas
+        # seulement une étiquette — utile pour la prospection commerciale.
+        if classification["action_taken"] == "Rendez-vous pris":
+            appointment = Appointment(
+                organization_id=organization_id,
+                contact_id=contact_id,
+                agent_id=agent.id,
+                call_id=call.id,
+                scheduled_at=_generate_mock_slot(),
+                status="scheduled",
+                notes=f"Rendez-vous pris automatiquement suite à l'appel du {call.started_at:%d/%m/%Y}.",
+            )
+            db.add(appointment)
 
     return call

@@ -199,6 +199,19 @@ export interface Contact {
   status: string;
 }
 
+export interface Appointment {
+  id: string;
+  organization_id: string;
+  contact_id: string;
+  agent_id: string | null;
+  call_id: string | null;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface Distributor {
   id: string;
   name: string;
@@ -447,6 +460,28 @@ export const api = {
       method: "POST",
       organizationId,
       body: JSON.stringify({ content }),
+    }),
+
+  listAppointments: (organizationId: string) =>
+    request<Appointment[]>("/appointments", { organizationId }),
+  createAppointment: (
+    organizationId: string,
+    data: { contact_id: string; scheduled_at: string; duration_minutes?: number; notes?: string }
+  ) =>
+    request<Appointment>("/appointments", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  updateAppointment: (
+    organizationId: string,
+    appointmentId: string,
+    data: { status?: string; scheduled_at?: string; notes?: string }
+  ) =>
+    request<Appointment>(`/appointments/${appointmentId}`, {
+      method: "PATCH",
+      organizationId,
+      body: JSON.stringify(data),
     }),
 
   listDistributors: () => request<Distributor[]>("/distributors"),

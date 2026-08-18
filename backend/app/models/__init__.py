@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.organization_membership import OrganizationMembership
 from app.models.campaign import Campaign, CampaignTarget
 from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
+from app.models.appointment import Appointment
 
 __all__ = [
     "Organization",
@@ -25,4 +26,5 @@ __all__ = [
     "CampaignTarget",
     "KnowledgeDocument",
     "KnowledgeChunk",
+    "Appointment",
 ]

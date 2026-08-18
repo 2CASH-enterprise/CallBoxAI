@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Bot, Phone, Megaphone, BarChart3,
-  BookOpen, Users, Globe, Network, type LucideIcon,
+  BookOpen, Users, Globe, Network, Calendar, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useBranding } from "@/lib/useBranding";
@@ -20,6 +20,7 @@ const clientLinks: NavItem[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/agents", label: "Agents IA", icon: Bot },
   { href: "/calls", label: "Appels", icon: Phone },
+  { href: "/appointments", label: "Rendez-vous", icon: Calendar },
   { href: "/campaigns", label: "Campagnes", icon: Megaphone },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/knowledge", label: "Base de connaissances", icon: BookOpen },
