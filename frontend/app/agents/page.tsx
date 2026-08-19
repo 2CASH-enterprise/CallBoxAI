@@ -11,6 +11,7 @@ const LANGUAGES = [
   { value: "fr", label: "Français" },
   { value: "wo", label: "Wolof" },
   { value: "en", label: "Anglais" },
+  { value: "multi", label: "Multilingue (détection automatique)" },
 ];
 
 export default function AgentsPage() {
@@ -239,6 +240,13 @@ export default function AgentsPage() {
                   <option key={l.value} value={l.value}>{l.label}</option>
                 ))}
               </select>
+              {form.language === "multi" && (
+                <p className={styles.voiceHint}>
+                  L'agent détecte automatiquement la langue de l'appelant parmi 55 langues supportées par
+                  Retell. La qualité de la voix peut varier selon la langue parlée — certaines voix sont
+                  optimisées pour une langue en particulier.
+                </p>
+              )}
             </div>
 
             <div>

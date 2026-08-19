@@ -26,10 +26,15 @@ RETELL_API_BASE = "https://api.retellai.com"
 # Correspondance entre les langues de la plateforme (section 8) et les codes
 # de langue attendus par Retell. Le wolof n'a pas de support TTS/STT connu
 # chez Retell à ce jour : on retombe sur le français plutôt que d'échouer.
+# "multi" active la détection automatique de langue de Retell (confirmé sur
+# leur documentation officielle : 55 langues supportées, bascule automatique
+# selon ce que dit l'appelant) — la qualité perçue dépend cependant de la
+# voix choisie, certaines voix étant optimisées pour une langue en particulier.
 _LANGUAGE_CODES = {
     "fr": "fr-FR",
     "en": "en-US",
     "wo": "fr-FR",
+    "multi": "multi",
 }
 
 
