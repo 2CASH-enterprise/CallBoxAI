@@ -26,4 +26,12 @@ class Appointment(Base):
     status = Column(String, default="scheduled")  # scheduled | confirmed | cancelled | completed
     notes = Column(Text, nullable=True)
 
+    # Réservation hôtelière (PMS, section 16 — intégration réelle) : quand
+    # renseignés, ces champs indiquent que ce rendez-vous est en réalité une
+    # réservation de chambre, avec sa confirmation côté PMS (Mock ou réel).
+    # `scheduled_at` sert alors de date d'arrivée (check-in).
+    room_type = Column(String, nullable=True)
+    check_out_at = Column(DateTime, nullable=True)
+    pms_confirmation_number = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -286,7 +286,18 @@ export interface Appointment {
   duration_minutes: number;
   status: string;
   notes: string | null;
+  room_type: string | null;
+  check_out_at: string | null;
+  pms_confirmation_number: string | null;
   created_at: string;
+}
+
+export interface AvailabilityOffer {
+  room_type: string;
+  rate_per_night: number;
+  total_price: number;
+  rooms_available: number;
+  currency: string;
 }
 
 export interface Distributor {
@@ -651,6 +662,22 @@ export const api = {
   ) =>
     request<Appointment>(`/appointments/${appointmentId}`, {
       method: "PATCH",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+
+  checkPmsAvailability: (organizationId: string, data: { check_in: string; check_out: string; room_type?: string }) =>
+    request<AvailabilityOffer[]>("/pms/availability", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  createPmsReservation: (
+    organizationId: string,
+    data: { contact_id: string; check_in: string; check_out: string; room_type: string; num_guests?: number }
+  ) =>
+    request<{ id: string; pms_confirmation_number: string }>("/pms/reservations", {
+      method: "POST",
       organizationId,
       body: JSON.stringify(data),
     }),

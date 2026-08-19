@@ -233,7 +233,10 @@ def test_follow_up_eventually_stops_at_max(client):
     upload_csv(client, campaign["id"], headers, csv_lines)
     client.post(f"/campaigns/{campaign['id']}/start", headers=headers)
 
-    for _ in range(4):
+    # Assez de lots pour garantir la convergence même dans le pire cas
+    # statistique (20 contacts, jusqu'à 5 tentatives chacun avant échec
+    # définitif si injoignable à chaque fois) — évite un test instable.
+    for _ in range(20):
         client.post(f"/campaigns/{campaign['id']}/run-batch", headers=headers)
 
     detail = client.get(f"/campaigns/{campaign['id']}", headers=headers).json()

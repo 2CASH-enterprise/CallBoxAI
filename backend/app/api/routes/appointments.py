@@ -1,8 +1,10 @@
 """
 Endpoints Rendez-vous (section 30 du cahier des charges : POST /appointments).
 Créés automatiquement par le pipeline d'appel (section 19/41 — prospection
-commerciale) quand un appel aboutit à "Rendez-vous pris", ou manuellement.
+commerciale) quand un appel aboutit à "Rendez-vous pris", manuellement, ou
+via une réservation PMS (section 16 — voir app.api.routes.pms).
 """
+import logging
 import uuid
 from datetime import datetime
 
@@ -14,10 +16,15 @@ from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.models.appointment import Appointment
 from app.models.contact import Contact
+from app.providers.pms.mock import MockPMSProvider
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 VALID_STATUSES = {"scheduled", "confirmed", "cancelled", "completed"}
+
+pms_provider = MockPMSProvider()
 
 
 class AppointmentCreate(BaseModel):
@@ -43,6 +50,9 @@ class AppointmentOut(BaseModel):
     duration_minutes: int
     status: str
     notes: str | None
+    room_type: str | None
+    check_out_at: datetime | None
+    pms_confirmation_number: str | None
     created_at: datetime
 
     class Config:
@@ -98,6 +108,18 @@ def update_appointment(
     if payload.status is not None:
         if payload.status not in VALID_STATUSES:
             raise HTTPException(status_code=400, detail="Statut invalide")
+
+        # Répercute l'annulation vers le PMS si c'est une réservation
+        # hôtelière (section 16). Résilience (section 29) : un échec côté
+        # PMS ne doit jamais empêcher l'annulation locale.
+        if payload.status == "cancelled" and appointment.pms_confirmation_number:
+            try:
+                pms_provider.cancel_reservation(appointment.pms_confirmation_number)
+            except Exception:
+                logger.exception(
+                    "Échec de l'annulation PMS pour la réservation %s", appointment.pms_confirmation_number
+                )
+
         appointment.status = payload.status
     if payload.scheduled_at is not None:
         appointment.scheduled_at = payload.scheduled_at
