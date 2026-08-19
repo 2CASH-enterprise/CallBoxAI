@@ -91,6 +91,34 @@ export default function AgentsPage() {
     setModalOpen(true);
   }
 
+  function useHotelReceptionistTemplate() {
+    setForm({
+      name: "Agent Réceptionniste Hôtel",
+      objective: "Répondre aux demandes des clients et de l'hôtel, prendre les réservations, transférer si besoin",
+      system_prompt:
+        "Tu es la réceptionniste virtuelle de l'hôtel.\n\n" +
+        "Ton objectif est de répondre aux demandes des clients (informations, réservations, questions " +
+        "pratiques) et de transférer à la réception physique quand une intervention humaine est nécessaire.\n\n" +
+        "Tu dois toujours :\n" +
+        "- accueillir chaleureusement, en français ou en anglais selon la langue du client ;\n" +
+        "- t'appuyer sur la base de connaissances pour les horaires, tarifs, équipements, politique d'annulation ;\n" +
+        "- ne jamais inventer une disponibilité ou un tarif que tu ne connais pas ;\n" +
+        "- proposer une réservation dès que le client exprime une intention claire de dates ;\n" +
+        "- transférer à la réception pour : une modification de réservation existante, une réclamation, " +
+        "ou toute demande urgente (problème dans la chambre, sécurité) ;\n" +
+        "- rester concise, les clients appellent souvent depuis leur téléphone en déplacement.",
+      language: "multi",
+      transfer_enabled: true,
+      transfer_number: "+33100000000",
+      transfer_instructions: "Modification de réservation existante, réclamation, ou demande urgente (chambre, sécurité).",
+      voice_id: "",
+      business_hours_start: "",
+      business_hours_end: "",
+      ticketing_enabled: true,
+    });
+    setModalOpen(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!currentOrg || !form.name.trim()) return;
@@ -139,6 +167,9 @@ export default function AgentsPage() {
           </button>
           <button className="btn btn-ghost" onClick={useServiceClientTemplate}>
             <Sparkles size={14} /> Modèle : Service Client
+          </button>
+          <button className="btn btn-ghost" onClick={useHotelReceptionistTemplate}>
+            <Sparkles size={14} /> Modèle : Réceptionniste Hôtel
           </button>
           <button className={styles.button} onClick={() => setModalOpen(true)}>
             + Créer un agent
