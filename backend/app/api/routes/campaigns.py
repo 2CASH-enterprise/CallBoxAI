@@ -9,10 +9,11 @@ déclenchement change une fois Celery en place.
 """
 import random
 import uuid
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -41,6 +42,11 @@ analytics_provider = MockAnalyticsProvider()
 
 DEFAULT_BATCH_SIZE = 10
 
+# Délai minimum avant de rappeler un contact déjà joint mais pas encore
+# converti (relance basée sur l'intérêt, section 13) — évite de le rappeler
+# deux fois dans la même minute, ce qui n'aurait aucun sens commercialement.
+FOLLOW_UP_DELAY_DAYS = 2
+
 
 # ---------- Schémas ----------
 
@@ -50,6 +56,7 @@ class CampaignCreate(BaseModel):
     schedule_start: str = "08:00"
     schedule_end: str = "19:00"
     max_attempts: int = 3
+    max_follow_ups: int = 2
 
 
 class CampaignOut(BaseModel):
@@ -61,6 +68,7 @@ class CampaignOut(BaseModel):
     schedule_start: str
     schedule_end: str
     max_attempts: int
+    max_follow_ups: int
     created_at: datetime
     started_at: datetime | None
 
@@ -91,6 +99,7 @@ class BatchResult(BaseModel):
     completed: int
     no_answer: int
     failed: int
+    follow_up_scheduled: int
     message: str | None = None
 
 
@@ -126,6 +135,20 @@ def within_schedule(campaign: Campaign, now: datetime | None = None) -> bool:
     if start <= end:
         return start <= current <= end
     return current >= start or current <= end  # fenêtre à cheval sur minuit
+
+
+def _needs_follow_up(qualification: str | None, action_taken: str | None, follow_up_count: int, max_follow_ups: int) -> bool:
+    """
+    Décide si un contact JOINT doit être rappelé plus tard (relance) plutôt
+    que considéré comme définitivement traité — basé sur l'intérêt exprimé,
+    pas seulement la joignabilité (section 13/19).
+    """
+    if action_taken == "Rendez-vous pris":
+        return False  # converti : terminé
+    if qualification in ("Pas intéressé", "À suivre par un humain"):
+        return False  # refus définitif, ou pris en charge par un humain
+    # "Prospect chaud"/"Prospect tiède" sans rendez-vous encore -> relance possible
+    return follow_up_count < max_follow_ups
 
 
 # ---------- Endpoints ----------
@@ -243,19 +266,24 @@ def run_batch(
     campaign = get_campaign_or_404(campaign_id, organization_id, db)
 
     if campaign.status != "running":
-        return BatchResult(processed=0, completed=0, no_answer=0, failed=0, message="La campagne n'est pas en cours (démarrez-la d'abord).")
+        return BatchResult(processed=0, completed=0, no_answer=0, failed=0, follow_up_scheduled=0, message="La campagne n'est pas en cours (démarrez-la d'abord).")
 
     if not within_schedule(campaign):
         return BatchResult(
-            processed=0, completed=0, no_answer=0, failed=0,
+            processed=0, completed=0, no_answer=0, failed=0, follow_up_scheduled=0,
             message=f"Hors horaires autorisés ({campaign.schedule_start} - {campaign.schedule_end}).",
         )
 
     agent = db.query(Agent).filter(Agent.id == campaign.agent_id).first()
 
+    now = datetime.utcnow()
     targets = (
         db.query(CampaignTarget)
-        .filter(CampaignTarget.campaign_id == campaign.id, CampaignTarget.status == "pending")
+        .filter(
+            CampaignTarget.campaign_id == campaign.id,
+            CampaignTarget.status == "pending",
+            or_(CampaignTarget.next_attempt_at.is_(None), CampaignTarget.next_attempt_at <= now),
+        )
         .limit(DEFAULT_BATCH_SIZE)
         .all()
     )
@@ -263,6 +291,7 @@ def run_batch(
     completed_count = 0
     no_answer_count = 0
     failed_count = 0
+    follow_up_count_total = 0
 
     for target in targets:
         contact = db.query(Contact).filter(Contact.id == target.contact_id).first()
@@ -287,8 +316,15 @@ def run_batch(
                 contact_id=contact.id,
             )
             target.call_id = call.id
-            target.status = "completed"
             completed_count += 1
+
+            if _needs_follow_up(call.qualification, call.action_taken, target.follow_up_count, campaign.max_follow_ups):
+                target.follow_up_count += 1
+                target.status = "pending"
+                target.next_attempt_at = now + timedelta(days=FOLLOW_UP_DELAY_DAYS)
+                follow_up_count_total += 1
+            else:
+                target.status = "completed"
         elif target.attempts >= campaign.max_attempts:
             target.status = "failed"
             failed_count += 1
@@ -309,5 +345,6 @@ def run_batch(
         completed=completed_count,
         no_answer=no_answer_count,
         failed=failed_count,
+        follow_up_scheduled=follow_up_count_total,
         message="Aucun contact en attente." if not targets else None,
     )

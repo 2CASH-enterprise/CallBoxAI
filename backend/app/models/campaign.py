@@ -27,6 +27,11 @@ class Campaign(Base):
     # Nombre de tentatives max par contact avant abandon définitif (retry, section 13)
     max_attempts = Column(Integer, default=3)
 
+    # Nombre de RELANCES max par contact JOINT mais pas encore converti (ni
+    # rendez-vous pris, ni refus définitif) — distinct de max_attempts qui ne
+    # concerne que les contacts injoignables.
+    max_follow_ups = Column(Integer, default=2)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     started_at = Column(DateTime, nullable=True)
 
@@ -43,6 +48,13 @@ class CampaignTarget(Base):
 
     status = Column(String, default="pending")  # pending | completed | no_answer | failed
     attempts = Column(Integer, default=0)
+
+    # Relance basée sur l'intérêt (pas seulement la joignabilité) : nombre de
+    # relances déjà effectuées pour ce contact, et date à partir de laquelle
+    # la prochaine relance est autorisée (délai minimum entre deux appels au
+    # même contact — évite de rappeler deux fois dans la même minute).
+    follow_up_count = Column(Integer, default=0)
+    next_attempt_at = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -232,6 +232,7 @@ export interface Campaign {
   schedule_start: string;
   schedule_end: string;
   max_attempts: number;
+  max_follow_ups: number;
   created_at: string;
   started_at: string | null;
 }
@@ -262,6 +263,7 @@ export interface BatchResult {
   completed: number;
   no_answer: number;
   failed: number;
+  follow_up_scheduled: number;
   message: string | null;
 }
 
@@ -485,7 +487,7 @@ export const api = {
     request<Campaign[]>("/campaigns", { organizationId }),
   createCampaign: (
     organizationId: string,
-    data: { name: string; agent_id: string; schedule_start: string; schedule_end: string; max_attempts: number }
+    data: { name: string; agent_id: string; schedule_start: string; schedule_end: string; max_attempts: number; max_follow_ups: number }
   ) =>
     request<Campaign>("/campaigns", {
       method: "POST",

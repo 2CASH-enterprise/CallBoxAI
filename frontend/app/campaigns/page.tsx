@@ -15,7 +15,7 @@ export default function CampaignsPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", agent_id: "", schedule_start: "08:00", schedule_end: "19:00", max_attempts: "3" });
+  const [form, setForm] = useState({ name: "", agent_id: "", schedule_start: "08:00", schedule_end: "19:00", max_attempts: "3", max_follow_ups: "2" });
   const [submitting, setSubmitting] = useState(false);
 
   const [importing, setImporting] = useState(false);
@@ -62,8 +62,9 @@ export default function CampaignsPage() {
         schedule_start: form.schedule_start,
         schedule_end: form.schedule_end,
         max_attempts: parseInt(form.max_attempts, 10) || 3,
+        max_follow_ups: parseInt(form.max_follow_ups, 10) || 0,
       });
-      setForm({ name: "", agent_id: agents[0]?.id || "", schedule_start: "08:00", schedule_end: "19:00", max_attempts: "3" });
+      setForm({ name: "", agent_id: agents[0]?.id || "", schedule_start: "08:00", schedule_end: "19:00", max_attempts: "3", max_follow_ups: "2" });
       setModalOpen(false);
       setCampaigns((prev) => [...prev, created]);
       setSelectedId(created.id);
@@ -184,13 +185,14 @@ export default function CampaignsPage() {
                     </button>
                     <span className={styles.scheduleNote}>
                       Horaires : {detail.schedule_start} - {detail.schedule_end} · {detail.max_attempts} tentative(s) max
+                      (injoignable) · {detail.max_follow_ups} relance(s) max (intérêt)
                     </span>
                   </div>
                   {lastBatch && (
                     <p className={styles.batchResult}>
                       {lastBatch.message
                         ? lastBatch.message
-                        : `Lot traité : ${lastBatch.processed} contact(s) — ${lastBatch.completed} réussi(s), ${lastBatch.no_answer} sans réponse (retentés), ${lastBatch.failed} échec(s) définitif(s).`}
+                        : `Lot traité : ${lastBatch.processed} contact(s) — ${lastBatch.completed} joint(s), dont ${lastBatch.follow_up_scheduled} relance(s) programmée(s) ; ${lastBatch.no_answer} sans réponse (retentés) ; ${lastBatch.failed} échec(s) définitif(s).`}
                     </p>
                   )}
                 </div>
@@ -232,9 +234,16 @@ export default function CampaignsPage() {
               <input
                 type="number"
                 min={1}
-                placeholder="Tentatives max par contact"
+                placeholder="Tentatives max par contact (injoignable)"
                 value={form.max_attempts}
                 onChange={(e) => setForm({ ...form, max_attempts: e.target.value })}
+              />
+              <input
+                type="number"
+                min={0}
+                placeholder="Relances max (contact joint, pas encore converti)"
+                value={form.max_follow_ups}
+                onChange={(e) => setForm({ ...form, max_follow_ups: e.target.value })}
               />
             </div>
             <div className={styles.modalActions}>
