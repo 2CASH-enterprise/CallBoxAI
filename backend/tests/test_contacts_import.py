@@ -72,3 +72,53 @@ def test_import_isolated_between_organizations(client):
 
     contacts_b = client.get("/contacts", headers=headers_b).json()
     assert len(contacts_b) == 0
+
+
+def test_import_recognizes_french_column_names(client):
+    """
+    Bug réel corrigé : un export avec les colonnes "nom"/"telephone" (au lieu
+    de "first_name"/"phone") doit être reconnu automatiquement.
+    """
+    headers = setup_org(client)
+    csv_content = "nom,adresse,ville,telephone,note_google\nHotel Test,Adresse,Paris,+33 1 78 90 78 10,4.4\n"
+
+    response = client.post("/contacts/import/text", json={"content": csv_content}, headers=headers)
+    assert response.status_code == 200
+    summary = response.json()
+    assert summary["imported"] == 1
+    assert summary["skipped_invalid_phone"] == 0
+
+    contact = client.get("/contacts", headers=headers).json()[0]
+    assert contact["first_name"] == "Hotel Test"
+    assert contact["phone"] == "+33178907810"  # espaces retirés
+
+
+def test_import_cleans_formatted_phone_numbers(client):
+    """Numéros avec espaces, tirets, points, parenthèses — tous doivent être acceptés et nettoyés."""
+    headers = setup_org(client)
+    csv_content = (
+        "phone\n"
+        "+33 1 78 90 78 10\n"
+        "+33-1-78-90-78-11\n"
+        "+33.1.78.90.78.12\n"
+        "+33 (1) 78 90 78 13\n"
+    )
+
+    response = client.post("/contacts/import/text", json={"content": csv_content}, headers=headers)
+    summary = response.json()
+    assert summary["imported"] == 4
+    assert summary["skipped_invalid_phone"] == 0
+
+    contacts = client.get("/contacts", headers=headers).json()
+    phones = {c["phone"] for c in contacts}
+    assert phones == {"+33178907810", "+33178907811", "+33178907812", "+33178907813"}
+
+
+def test_import_still_ignores_genuinely_empty_or_invalid_phones(client):
+    headers = setup_org(client)
+    csv_content = "nom,telephone\nHotel Sans Numéro,\nHotel Numéro Invalide,abc\n"
+
+    response = client.post("/contacts/import/text", json={"content": csv_content}, headers=headers)
+    summary = response.json()
+    assert summary["imported"] == 0
+    assert summary["skipped_invalid_phone"] == 2
