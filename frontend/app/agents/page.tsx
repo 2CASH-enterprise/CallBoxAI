@@ -119,6 +119,36 @@ export default function AgentsPage() {
     setModalOpen(true);
   }
 
+  function useStandardTemplate() {
+    setForm({
+      name: "Standard Téléphonique",
+      objective: "Accueillir les appels au nom de l'entreprise, orienter, prendre message ou rendez-vous",
+      system_prompt:
+        "Tu es le standard téléphonique virtuel de l'entreprise. Tu décroches au nom de l'entreprise et " +
+        "remplaces l'accueil téléphonique traditionnel.\n\n" +
+        "Ton objectif est de comprendre la demande de l'appelant, répondre aux questions fréquentes grâce " +
+        "à la base de connaissances, transférer vers la bonne personne si nécessaire, prendre un message " +
+        "si personne n'est disponible, et proposer un rendez-vous si la demande s'y prête.\n\n" +
+        "Tu dois toujours :\n" +
+        "- décrocher en te présentant au nom de l'entreprise ;\n" +
+        "- identifier rapidement le motif de l'appel ;\n" +
+        "- répondre aux questions courantes à partir de la base de connaissances ;\n" +
+        "- transférer vers la bonne personne ou le bon service quand la demande le nécessite ;\n" +
+        "- prendre un message clair si personne n'est disponible pour répondre ;\n" +
+        "- proposer un rendez-vous si la demande s'y prête ;\n" +
+        "- ne jamais inventer une information (tarif, disponibilité, personne) que tu ne connais pas.",
+      language: "fr",
+      transfer_enabled: true,
+      transfer_number: "+33100000000",
+      transfer_instructions: "Demande nécessitant l'intervention d'un salarié précis, ou urgence.",
+      voice_id: "",
+      business_hours_start: "",
+      business_hours_end: "",
+      ticketing_enabled: true,
+    });
+    setModalOpen(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!currentOrg || !form.name.trim()) return;
@@ -170,6 +200,9 @@ export default function AgentsPage() {
           </button>
           <button className="btn btn-ghost" onClick={useHotelReceptionistTemplate}>
             <Sparkles size={14} /> Modèle : Réceptionniste Hôtel
+          </button>
+          <button className="btn btn-ghost" onClick={useStandardTemplate}>
+            <Sparkles size={14} /> Modèle : Standard Téléphonique
           </button>
           <button className={styles.button} onClick={() => setModalOpen(true)}>
             + Créer un agent
