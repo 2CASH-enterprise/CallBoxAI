@@ -25,7 +25,7 @@ export default function AgentsPage() {
   const [savingVoice, setSavingVoice] = useState(false);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
-    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false,
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false, category: "generique",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,7 +60,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: false,
-      pms_enabled: false,
+      pms_enabled: false, category: "prospection",
     });
     setModalOpen(true);
   }
@@ -88,7 +88,7 @@ export default function AgentsPage() {
       business_hours_start: "08:00",
       business_hours_end: "18:00",
       ticketing_enabled: true,
-      pms_enabled: false,
+      pms_enabled: false, category: "service_client",
     });
     setModalOpen(true);
   }
@@ -121,7 +121,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: true,
-      pms_enabled: true,
+      pms_enabled: true, category: "hotellerie",
     });
     setModalOpen(true);
   }
@@ -152,7 +152,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: true,
-      pms_enabled: false,
+      pms_enabled: false, category: "telesecretariat",
     });
     setModalOpen(true);
   }
@@ -165,7 +165,7 @@ export default function AgentsPage() {
       await api.createAgent(currentOrg.organization_id, form);
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
-        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false,
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false, category: "generique",
       });
       setModalOpen(false);
       load();

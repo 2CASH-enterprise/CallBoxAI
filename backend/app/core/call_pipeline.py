@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, time
 from sqlalchemy.orm import Session
 
 from app.core.rag import retrieve_top_chunks
+from app.core.classification_labels import localize_classification
 from app.models.agent import Agent
 from app.models.call import Call
 from app.models.contact import Contact
@@ -195,8 +196,14 @@ def execute_mock_call(
         reason = agent.transfer_instructions or "demande dépassant les compétences de l'agent"
         transcript += f"\n\n[Transfert vers un opérateur humain — {reason}] Appel transféré vers {agent.transfer_number}."
 
-    # Classification analytics (section 19)
+    # Classification analytics (section 19) — `classification` reste
+    # canonique et sert à TOUTE la logique métier ci-dessous (CRM, rendez-
+    # vous, priorité de ticket). `display` n'est utilisé que pour ce qui est
+    # écrit/affiché (Call, Ticket.category), habillé selon le métier de
+    # l'agent (section 19/41 — ex. "Client satisfait" plutôt que "Prospect
+    # chaud" pour un hôtel).
     classification = analytics_provider.classify(transcript=transcript, summary=summary, status=status)
+    display = localize_classification(classification, agent.category)
 
     call = Call(
         organization_id=organization_id,
@@ -211,11 +218,11 @@ def execute_mock_call(
         knowledge_context=knowledge_context,
         transferred_to=transferred_to,
         transferred_at=transferred_at,
-        intent=classification["intent"],
-        qualification=classification["qualification"],
-        sentiment=classification["sentiment"],
-        score=classification["score"],
-        action_taken=classification["action_taken"],
+        intent=display["intent"],
+        qualification=display["qualification"],
+        sentiment=display["sentiment"],
+        score=display["score"],
+        action_taken=display["action_taken"],
         started_at=datetime.utcnow(),
         ended_at=datetime.utcnow(),
     )
@@ -233,7 +240,7 @@ def execute_mock_call(
                 call_id=call.id,
                 contact_id=contact_id,
                 subject=f"Appel du {call.started_at:%d/%m/%Y %H:%M}",
-                category=classification["intent"],
+                category=display["intent"],
                 priority=_priority_from_sentiment(classification["sentiment"]),
                 status="ouvert",
                 description=summary,

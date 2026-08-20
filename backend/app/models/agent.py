@@ -58,4 +58,11 @@ class Agent(Base):
     # seulement depuis le dashboard. Sans intérêt pour un agent non-hôtelier.
     pms_enabled = Column(Boolean, default=False)
 
+    # Métier de l'agent (section 19/41) : adapte le VOCABULAIRE affiché de la
+    # classification automatique ("Prospect tiède" n'a aucun sens pour un
+    # client d'hôtel) — voir app.core.classification_labels. La logique
+    # métier (CRM, rendez-vous, relances) reste identique quelle que soit
+    # la catégorie ; seul l'habillage change.
+    category = Column(String, default="generique")  # generique|prospection|service_client|hotellerie|telesecretariat
+
     created_at = Column(DateTime, default=datetime.utcnow)

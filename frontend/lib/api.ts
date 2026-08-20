@@ -92,6 +92,7 @@ export interface Agent {
   business_hours_end: string | null;
   ticketing_enabled: boolean;
   pms_enabled: boolean;
+  category: string;
 }
 
 export interface Ticket {
@@ -432,6 +433,7 @@ export const api = {
       business_hours_end?: string;
       ticketing_enabled?: boolean;
       pms_enabled?: boolean;
+      category?: string;
     }
   ) =>
     request<Agent>("/agents", {
@@ -455,6 +457,7 @@ export const api = {
       business_hours_end: string;
       ticketing_enabled: boolean;
       pms_enabled: boolean;
+      category: string;
     }>
   ) =>
     request<Agent>(`/agents/${agentId}`, {

@@ -32,6 +32,7 @@ class AgentCreate(BaseModel):
     business_hours_end: str | None = None
     ticketing_enabled: bool = False
     pms_enabled: bool = False
+    category: str = "generique"
 
 
 class AgentUpdate(BaseModel):
@@ -47,6 +48,7 @@ class AgentUpdate(BaseModel):
     business_hours_end: str | None = None
     ticketing_enabled: bool | None = None
     pms_enabled: bool | None = None
+    category: str | None = None
 
 
 class AgentOut(BaseModel):
@@ -64,6 +66,7 @@ class AgentOut(BaseModel):
     business_hours_end: str | None
     ticketing_enabled: bool
     pms_enabled: bool
+    category: str
 
     class Config:
         from_attributes = True
