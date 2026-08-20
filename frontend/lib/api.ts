@@ -303,6 +303,14 @@ export interface AvailabilityOffer {
   currency: string;
 }
 
+export interface SmsLog {
+  id: string;
+  to_number: string;
+  body: string;
+  provider: string;
+  created_at: string;
+}
+
 export interface Distributor {
   id: string;
   name: string;
@@ -681,13 +689,20 @@ export const api = {
     }),
   createPmsReservation: (
     organizationId: string,
-    data: { contact_id: string; check_in: string; check_out: string; room_type: string; num_guests?: number }
+    data: { contact_id: string; check_in: string; check_out: string; room_type: string; num_guests?: number; guest_email?: string }
   ) =>
-    request<{ id: string; pms_confirmation_number: string }>("/pms/reservations", {
+    request<{
+      id: string;
+      pms_confirmation_number: string;
+      confirmation_email_sent: boolean;
+      confirmation_sms_sent: boolean;
+    }>("/pms/reservations", {
       method: "POST",
       organizationId,
       body: JSON.stringify(data),
     }),
+
+  listSms: (organizationId: string) => request<SmsLog[]>("/sms", { organizationId }),
 
   listDistributors: () => request<Distributor[]>("/distributors"),
   createDistributor: (data: { name: string; email: string; password: string; country?: string; commission_rate?: number }) =>

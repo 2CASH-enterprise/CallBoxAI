@@ -1,24 +1,14 @@
 """
-Interface abstraite MessagingProvider (section 17 du cahier des charges).
+Interface abstraite MessagingProvider (section 5 du cahier des charges) —
+envoi de SMS. Aucune logique métier ne doit dépendre directement d'un
+fournisseur particulier (Twilio, Vonage...) : elle ne doit connaître que
+cette interface.
 """
 from abc import ABC, abstractmethod
 
 
 class MessagingProvider(ABC):
     @abstractmethod
-    def send_whatsapp(self, to_number: str, message: str, link: str | None = None) -> dict:
+    def send_sms(self, to_number: str, body: str) -> None:
+        """Envoie un SMS. Doit lever une exception si l'envoi échoue."""
         ...
-
-    @abstractmethod
-    def send_sms(self, to_number: str, message: str) -> dict:
-        ...
-
-
-class MockMessagingProvider(MessagingProvider):
-    """Simule l'envoi WhatsApp/SMS sans compte fournisseur réel."""
-
-    def send_whatsapp(self, to_number: str, message: str, link: str | None = None) -> dict:
-        return {"to": to_number, "channel": "whatsapp", "status": "sent", "message": message, "link": link}
-
-    def send_sms(self, to_number: str, message: str) -> dict:
-        return {"to": to_number, "channel": "sms", "status": "sent", "message": message}

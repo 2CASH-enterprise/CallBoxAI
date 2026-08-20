@@ -14,6 +14,8 @@ from app.providers.telephony.base import TelephonyProvider
 from app.providers.telephony.mock import MockTelephonyProvider
 from app.providers.voice.base import VoiceProvider
 from app.providers.voice.mock import MockVoiceProvider
+from app.providers.messaging.base import MessagingProvider
+from app.providers.messaging.mock import MockMessagingProvider
 
 
 def get_telephony_provider() -> TelephonyProvider:
@@ -34,3 +36,20 @@ def get_voice_provider() -> VoiceProvider:
 
         return RetellProvider(api_key=settings.retell_api_key, agent_id=settings.retell_agent_id)
     return MockVoiceProvider()
+
+
+def get_messaging_provider(db, organization_id) -> MessagingProvider:
+    """
+    Contrairement aux autres providers, celui-ci a besoin d'une session DB et
+    de l'organisation concernée — le Mock journalise le SMS dans SmsLog
+    (page "SMS" du dashboard) au lieu de l'envoyer réellement.
+    """
+    if settings.messaging_provider == "twilio" and settings.twilio_account_sid and settings.twilio_auth_token:
+        from app.providers.messaging.twilio_provider import TwilioMessagingProvider
+
+        return TwilioMessagingProvider(
+            account_sid=settings.twilio_account_sid,
+            auth_token=settings.twilio_auth_token,
+            from_number=settings.twilio_phone_number,
+        )
+    return MockMessagingProvider(db=db, organization_id=organization_id)

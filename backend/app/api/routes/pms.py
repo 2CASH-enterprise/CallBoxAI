@@ -25,6 +25,7 @@ from app.models.appointment import Appointment
 from app.models.contact import Contact
 from app.providers.pms.mock import MockPMSProvider
 from app.providers.email.mock import MockEmailProvider
+from app.core.providers import get_messaging_provider
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ class ReservationOut(BaseModel):
     pms_confirmation_number: str | None
     status: str
     confirmation_email_sent: bool = False
+    confirmation_sms_sent: bool = False
 
 
 def _send_confirmation_email(email: str, appointment: Appointment) -> bool:
@@ -100,9 +102,28 @@ def _send_confirmation_email(email: str, appointment: Appointment) -> bool:
         return False
 
 
+def _send_confirmation_sms(db: Session, organization_id: uuid.UUID, phone: str, appointment: Appointment) -> bool:
+    """
+    Envoie la confirmation de réservation par SMS, en complément de l'email
+    (section 12/16). Résilience (section 29) : un échec d'envoi ne doit
+    JAMAIS faire échouer la réservation elle-même.
+    """
+    try:
+        provider = get_messaging_provider(db, organization_id)
+        body = (
+            f"Réservation confirmée n°{appointment.pms_confirmation_number} — "
+            f"{appointment.room_type}, du {appointment.scheduled_at:%d/%m} au {appointment.check_out_at:%d/%m}."
+        )
+        provider.send_sms(to_number=phone, body=body)
+        return True
+    except Exception:
+        logger.exception("Échec de l'envoi du SMS de confirmation pour la réservation %s", appointment.pms_confirmation_number)
+        return False
+
+
 def _book_reservation(
     db: Session, organization_id: uuid.UUID, contact: Contact, check_in: date, check_out: date, room_type: str, guest_email: str | None = None
-) -> tuple[Appointment, bool]:
+) -> tuple[Appointment, bool, bool]:
     """Logique de réservation partagée entre le dashboard et les outils Retell."""
     result = pms_provider.create_reservation(
         check_in=check_in,
@@ -136,8 +157,9 @@ def _book_reservation(
 
     email_to_use = guest_email or contact.email
     email_sent = _send_confirmation_email(email_to_use, appointment) if email_to_use else False
+    sms_sent = _send_confirmation_sms(db, organization_id, contact.phone, appointment)
 
-    return appointment, email_sent
+    return appointment, email_sent, sms_sent
 
 
 # ---------- Endpoints Dashboard (JWT) ----------
@@ -166,7 +188,7 @@ def create_reservation(
         raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
 
     try:
-        appointment, email_sent = _book_reservation(
+        appointment, email_sent, sms_sent = _book_reservation(
             db, organization_id, contact, payload.check_in, payload.check_out, payload.room_type, payload.guest_email
         )
     except ValueError as e:
@@ -176,7 +198,7 @@ def create_reservation(
         id=appointment.id, contact_id=appointment.contact_id, room_type=appointment.room_type,
         check_in=appointment.scheduled_at, check_out=appointment.check_out_at,
         pms_confirmation_number=appointment.pms_confirmation_number, status=appointment.status,
-        confirmation_email_sent=email_sent,
+        confirmation_email_sent=email_sent, confirmation_sms_sent=sms_sent,
     )
 
 
@@ -245,7 +267,7 @@ def tool_create_reservation(
         db.flush()
 
     try:
-        appointment, email_sent = _book_reservation(
+        appointment, email_sent, sms_sent = _book_reservation(
             db, organization_id, contact, check_in, check_out, payload.room_type, payload.guest_email
         )
     except ValueError as e:
@@ -258,6 +280,7 @@ def tool_create_reservation(
         "check_in": payload.check_in,
         "check_out": payload.check_out,
         "confirmation_email_sent": email_sent,
+        "confirmation_sms_sent": sms_sent,
     }
 
 

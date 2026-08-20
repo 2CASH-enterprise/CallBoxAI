@@ -131,7 +131,11 @@ export default function AppointmentsPage() {
         check_out: pmsForm.check_out,
         room_type: roomType,
       });
-      setPmsMessage(`Réservation confirmée — ${reservation.pms_confirmation_number}`);
+      const notices = [];
+      if (reservation.confirmation_email_sent) notices.push("email");
+      if (reservation.confirmation_sms_sent) notices.push("SMS");
+      const notice = notices.length > 0 ? ` (confirmation envoyée par ${notices.join(" et ")})` : "";
+      setPmsMessage(`Réservation confirmée — ${reservation.pms_confirmation_number}${notice}`);
       setOffers(null);
       load();
     } catch {

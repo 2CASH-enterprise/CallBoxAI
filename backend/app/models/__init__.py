@@ -13,6 +13,7 @@ from app.models.appointment import Appointment
 from app.models.message import Message
 from app.models.survey import Survey, SurveyResponse
 from app.models.ticket import Ticket
+from app.models.sms_log import SmsLog
 
 __all__ = [
     "Organization",
@@ -34,4 +35,5 @@ __all__ = [
     "Survey",
     "SurveyResponse",
     "Ticket",
+    "SmsLog",
 ]
