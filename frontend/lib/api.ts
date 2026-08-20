@@ -111,6 +111,45 @@ export interface Ticket {
   updated_at: string;
 }
 
+export interface ReservationBrief {
+  appointment_id: string;
+  contact_name: string;
+  contact_phone: string;
+  room_type: string | null;
+  check_in: string;
+  check_out: string | null;
+  status: string;
+}
+
+export interface MessageBrief {
+  message_id: string;
+  caller_name: string | null;
+  caller_phone: string;
+  content: string;
+  urgent: boolean;
+  created_at: string;
+}
+
+export interface TicketBrief {
+  ticket_id: string;
+  subject: string;
+  category: string | null;
+  priority: string;
+  status: string;
+}
+
+export interface TodayDashboard {
+  arrivals_today: ReservationBrief[];
+  departures_today: ReservationBrief[];
+  pending_messages: MessageBrief[];
+  open_tickets: TicketBrief[];
+  overnight_summary: {
+    since: string;
+    total_calls: number;
+    reservations_made: number;
+  };
+}
+
 export interface Message {
   id: string;
   organization_id: string;
@@ -703,6 +742,7 @@ export const api = {
     }),
 
   listSms: (organizationId: string) => request<SmsLog[]>("/sms", { organizationId }),
+  getTodayDashboard: (organizationId: string) => request<TodayDashboard>("/dashboard/today", { organizationId }),
 
   listDistributors: () => request<Distributor[]>("/distributors"),
   createDistributor: (data: { name: string; email: string; password: string; country?: string; commission_rate?: number }) =>

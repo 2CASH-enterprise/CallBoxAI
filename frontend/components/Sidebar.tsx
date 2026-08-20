@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Bot, Phone, Megaphone, BarChart3,
   BookOpen, Users, Globe, Network, Calendar, TrendingDown,
-  MessageSquare, ClipboardList, LifeBuoy, MessageCircle, type LucideIcon,
+  MessageSquare, ClipboardList, LifeBuoy, MessageCircle, Sunrise, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useBranding } from "@/lib/useBranding";
@@ -18,6 +18,7 @@ interface NavItem {
 }
 
 const clientLinks: NavItem[] = [
+  { href: "/today", label: "Aujourd'hui", icon: Sunrise },
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/agents", label: "Agents IA", icon: Bot },
   { href: "/calls", label: "Appels", icon: Phone },
