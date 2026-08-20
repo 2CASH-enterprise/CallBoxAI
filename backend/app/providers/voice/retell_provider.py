@@ -171,8 +171,13 @@ class RetellProvider(VoiceProvider):
         response.raise_for_status()
         return response.json()
 
-    def create_retell_agent(self, name: str, llm_id: str, voice_id: str, language: str | None = None) -> dict:
-        """Crée l'agent vocal côté Retell, attaché au LLM créé précédemment."""
+    def create_retell_agent(self, name: str, llm_id: str, voice_id: str, language: str | None = None, webhook_url: str | None = None) -> dict:
+        """
+        Crée l'agent vocal côté Retell, attaché au LLM créé précédemment.
+        webhook_url (section 16/30) : sans lui, Retell n'a AUCUN moyen de
+        nous notifier la fin d'un appel réel — le webhook /webhooks/retell
+        ne recevrait jamais rien, quel que soit le code qu'on y écrit.
+        """
         payload = {
             "response_engine": {"type": "retell-llm", "llm_id": llm_id},
             "voice_id": voice_id,
@@ -180,6 +185,8 @@ class RetellProvider(VoiceProvider):
         }
         if language:
             payload["language"] = language
+        if webhook_url:
+            payload["webhook_url"] = webhook_url
         response = self._client.post("/create-agent", json=payload)
         response.raise_for_status()
         return response.json()
@@ -229,11 +236,13 @@ class RetellProvider(VoiceProvider):
         if pms_enabled and organization_id and public_base_url:
             tools = _build_pms_tools(organization_id, public_base_url)
 
+        webhook_url = f"{public_base_url.rstrip('/')}/webhooks/retell" if public_base_url else None
+
         llm = self.create_llm(
             general_prompt=system_prompt or f"Tu es {name}, un assistant vocal utile.", model=model, tools=tools
         )
         agent = self.create_retell_agent(
-            name=name, llm_id=llm["llm_id"], voice_id=voice_id, language=_language_code(language)
+            name=name, llm_id=llm["llm_id"], voice_id=voice_id, language=_language_code(language), webhook_url=webhook_url
         )
         self.publish_agent(agent["agent_id"])
         return agent["agent_id"]

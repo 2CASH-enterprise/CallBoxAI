@@ -202,9 +202,6 @@ def execute_mock_call(
     # écrit/affiché (Call, Ticket.category), habillé selon le métier de
     # l'agent (section 19/41 — ex. "Client satisfait" plutôt que "Prospect
     # chaud" pour un hôtel).
-    classification = analytics_provider.classify(transcript=transcript, summary=summary, status=status)
-    display = localize_classification(classification, agent.category)
-
     call = Call(
         organization_id=organization_id,
         agent_id=agent.id,
@@ -218,54 +215,81 @@ def execute_mock_call(
         knowledge_context=knowledge_context,
         transferred_to=transferred_to,
         transferred_at=transferred_at,
-        intent=display["intent"],
-        qualification=display["qualification"],
-        sentiment=display["sentiment"],
-        score=display["score"],
-        action_taken=display["action_taken"],
         started_at=datetime.utcnow(),
         ended_at=datetime.utcnow(),
     )
     db.add(call)
     db.flush()
 
+    apply_post_call_analytics(db, organization_id, agent, call, analytics_provider, contact_id)
+
+    return call
+
+
+def apply_post_call_analytics(
+    db: Session,
+    organization_id: uuid.UUID,
+    agent: Agent,
+    call: Call,
+    analytics_provider: AnalyticsProvider,
+    contact_id: uuid.UUID | None = None,
+) -> None:
+    """
+    Classification (section 19), ticket de service client (section 1/12),
+    mise à jour CRM et rendez-vous générique (section 18/30) — PARTAGÉ entre
+    le pipeline simulé (execute_mock_call) et les VRAIS appels, complétés de
+    façon asynchrone via webhook une fois l'appel réellement terminé (section
+    16/30, voir app.api.routes.webhooks). Modifie `call` en place.
+    """
+    classification = analytics_provider.classify(transcript=call.transcript or "", summary=call.summary or "", status=call.status)
+    display = localize_classification(classification, agent.category)
+
+    call.intent = display["intent"]
+    call.qualification = display["qualification"]
+    call.sentiment = display["sentiment"]
+    call.score = display["score"]
+    call.action_taken = display["action_taken"]
+
     # Ticket de service client (section 1/12) : uniquement pour les appels
     # entrants, et seulement si l'agent a le suivi de tickets activé — évite
     # de polluer les autres cas d'usage (prospection, sondages...).
-    if agent.ticketing_enabled and direction == "inbound":
+    if agent.ticketing_enabled and call.direction == "inbound":
         db.add(
             Ticket(
                 organization_id=organization_id,
                 agent_id=agent.id,
                 call_id=call.id,
                 contact_id=contact_id,
-                subject=f"Appel du {call.started_at:%d/%m/%Y %H:%M}",
+                subject=f"Appel du {call.started_at:%d/%m/%Y %H:%M}" if call.started_at else "Appel",
                 category=display["intent"],
                 priority=_priority_from_sentiment(classification["sentiment"]),
                 status="ouvert",
-                description=summary,
+                description=call.summary,
             )
         )
 
     # Mise à jour automatique du statut CRM du contact (section 18)
-    appointment = None
     if contact_id:
         contact = db.query(Contact).filter(Contact.id == contact_id).first()
         if contact:
             contact.status = map_contact_status(classification["qualification"], classification["action_taken"])
 
-        # Prise de rendez-vous réelle (section 30 : POST /appointments), pas
-        # seulement une étiquette — utile pour la prospection commerciale.
-        if classification["action_taken"] == "Rendez-vous pris":
-            appointment = Appointment(
-                organization_id=organization_id,
-                contact_id=contact_id,
-                agent_id=agent.id,
-                call_id=call.id,
-                scheduled_at=_generate_mock_slot(),
-                status="scheduled",
-                notes=f"Rendez-vous pris automatiquement suite à l'appel du {call.started_at:%d/%m/%Y}.",
+        # Prise de rendez-vous GÉNÉRIQUE (section 30 : POST /appointments) —
+        # jamais pour un agent PMS (section 16) : sa vraie réservation a déjà
+        # été créée par l'outil dédié pendant l'appel (create_room_reservation),
+        # créer celle-ci en plus ferait un doublon fictif.
+        if classification["action_taken"] == "Rendez-vous pris" and not agent.pms_enabled:
+            db.add(
+                Appointment(
+                    organization_id=organization_id,
+                    contact_id=contact_id,
+                    agent_id=agent.id,
+                    call_id=call.id,
+                    scheduled_at=_generate_mock_slot(),
+                    status="scheduled",
+                    notes=(
+                        f"Rendez-vous pris automatiquement suite à l'appel du {call.started_at:%d/%m/%Y}."
+                        if call.started_at else "Rendez-vous pris automatiquement."
+                    ),
+                )
             )
-            db.add(appointment)
-
-    return call

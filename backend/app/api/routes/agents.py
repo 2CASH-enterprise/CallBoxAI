@@ -4,6 +4,7 @@ section 3 du cahier des charges).
 """
 import logging
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -198,5 +199,24 @@ def create_test_web_call(
 
     provider = RetellProvider(api_key=settings.retell_api_key, agent_id=effective_retell_agent_id)
     result = provider.create_web_call(agent_id=effective_retell_agent_id)
+
+    # Sans cette ligne, le webhook /webhooks/retell n'aurait rien à
+    # compléter à la fin du test (section 16/30) : ni transcript, ni
+    # classification, ni ticket — le test vocal resterait invisible partout
+    # ailleurs dans le dashboard.
+    from app.models.call import Call
+
+    db.add(
+        Call(
+            organization_id=organization_id,
+            agent_id=agent.id,
+            direction="inbound",
+            status="in_progress",
+            provider="retell",
+            provider_call_id=result["call_id"],
+            started_at=datetime.utcnow(),
+        )
+    )
+    db.commit()
 
     return WebCallOut(access_token=result["access_token"], call_id=result["call_id"])

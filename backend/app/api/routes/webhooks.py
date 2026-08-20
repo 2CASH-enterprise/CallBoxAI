@@ -20,6 +20,7 @@ from fastapi import Depends
 
 from app.core.database import get_db
 from app.models.call import Call
+from app.models.agent import Agent
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -28,7 +29,10 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 async def retell_webhook(request: Request, db: Session = Depends(get_db)):
     """
     Reçoit les événements de fin d'appel envoyés par Retell (call_ended,
-    call_analyzed) et complète l'enregistrement Call correspondant.
+    call_analyzed) et complète l'enregistrement Call correspondant —
+    y compris la classification, le ticket de service client et la mise à
+    jour du CRM (section 16/19/30), exactement comme pour un appel simulé
+    (voir app.core.call_pipeline.apply_post_call_analytics).
 
     TODO avant production : vérifier l'en-tête X-Retell-Signature (HMAC avec
     la clé secrète du compte) pour s'assurer que la requête vient bien de
@@ -52,8 +56,23 @@ async def retell_webhook(request: Request, db: Session = Depends(get_db)):
     if "call_summary" in analysis:
         call.summary = analysis["call_summary"]
 
-    if payload.get("event") == "call_ended":
+    event = payload.get("event")
+    if event == "call_ended" and call.status == "in_progress":
         call.status = "completed"
+
+    # call_analyzed arrive en dernier (après call_ended), une fois le
+    # résumé/transcript final disponibles — c'est le bon moment pour
+    # classifier. Garde d'idempotence sur `call.intent is None` : Retell
+    # peut retenter la livraison du webhook plusieurs fois (section 29).
+    if event == "call_analyzed" and call.intent is None:
+        agent = db.query(Agent).filter(Agent.id == call.agent_id).first()
+        if agent:
+            from app.core.call_pipeline import apply_post_call_analytics
+            from app.providers.analytics.mock import MockAnalyticsProvider
+
+            apply_post_call_analytics(db, call.organization_id, agent, call, MockAnalyticsProvider(), call.contact_id)
+        if call.status == "in_progress":
+            call.status = "completed"
 
     db.commit()
     return {"status": "ok"}
