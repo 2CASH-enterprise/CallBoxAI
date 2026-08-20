@@ -52,7 +52,7 @@ def test_export_contacts_without_filter_includes_all(client):
     assert "attachment" in response.headers["content-disposition"]
 
     rows = list(csv.reader(io.StringIO(response.text)))
-    assert rows[0] == ["phone", "first_name", "last_name", "status", "last_call_qualification", "last_call_score", "last_call_intent", "last_call_date"]
+    assert rows[0] == ["phone", "first_name", "last_name", "email", "status", "last_call_qualification", "last_call_score", "last_call_intent", "last_call_date"]
     assert len(rows) == 3  # en-tête + 2 contacts
 
 

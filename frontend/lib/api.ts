@@ -274,6 +274,7 @@ export interface Contact {
   first_name: string | null;
   last_name: string | null;
   phone: string;
+  email: string | null;
   status: string;
 }
 
@@ -556,7 +557,7 @@ export const api = {
     request<Contact[]>("/contacts", { organizationId }),
   createContact: (
     organizationId: string,
-    data: { first_name?: string; last_name?: string; phone: string; status?: string }
+    data: { first_name?: string; last_name?: string; phone: string; email?: string; status?: string }
   ) =>
     request<Contact>("/contacts", {
       method: "POST",

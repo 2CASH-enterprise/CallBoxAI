@@ -18,11 +18,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.models.appointment import Appointment
 from app.models.contact import Contact
 from app.providers.pms.mock import MockPMSProvider
+from app.providers.email.mock import MockEmailProvider
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,7 @@ class ReservationRequest(BaseModel):
     check_out: date
     room_type: str
     num_guests: int = 1
+    guest_email: str | None = None
 
 
 class ReservationOut(BaseModel):
@@ -64,9 +67,42 @@ class ReservationOut(BaseModel):
     check_out: datetime
     pms_confirmation_number: str | None
     status: str
+    confirmation_email_sent: bool = False
 
 
-def _book_reservation(db: Session, organization_id: uuid.UUID, contact: Contact, check_in: date, check_out: date, room_type: str) -> Appointment:
+def _send_confirmation_email(email: str, appointment: Appointment) -> bool:
+    """
+    Envoie la confirmation de réservation par email (section 12/16).
+    Résilience (section 29) : un échec d'envoi ne doit JAMAIS faire échouer
+    la réservation elle-même — elle est déjà actée dans le PMS et le CRM.
+    """
+    try:
+        provider = MockEmailProvider(host=settings.smtp_host, port=settings.smtp_port, from_email=settings.smtp_from_email)
+        nights = (appointment.check_out_at - appointment.scheduled_at).days
+        body = (
+            f"Votre réservation est confirmée.\n\n"
+            f"Numéro de confirmation : {appointment.pms_confirmation_number}\n"
+            f"Type de chambre : {appointment.room_type}\n"
+            f"Arrivée : {appointment.scheduled_at:%d/%m/%Y}\n"
+            f"Départ : {appointment.check_out_at:%d/%m/%Y}\n"
+            f"Nombre de nuits : {nights}\n\n"
+            f"{appointment.notes or ''}\n\n"
+            f"À très bientôt !"
+        )
+        provider.send(
+            to_email=email,
+            subject=f"Confirmation de réservation — {appointment.pms_confirmation_number}",
+            body=body,
+        )
+        return True
+    except Exception:
+        logger.exception("Échec de l'envoi de l'email de confirmation pour la réservation %s", appointment.pms_confirmation_number)
+        return False
+
+
+def _book_reservation(
+    db: Session, organization_id: uuid.UUID, contact: Contact, check_in: date, check_out: date, room_type: str, guest_email: str | None = None
+) -> tuple[Appointment, bool]:
     """Logique de réservation partagée entre le dashboard et les outils Retell."""
     result = pms_provider.create_reservation(
         check_in=check_in,
@@ -89,9 +125,19 @@ def _book_reservation(db: Session, organization_id: uuid.UUID, contact: Contact,
     )
     db.add(appointment)
     contact.status = "RDV"
+
+    # Mémorise l'email sur le contact s'il n'en avait pas encore, sans
+    # écraser une valeur déjà connue (même logique que l'import CSV).
+    if guest_email and not contact.email:
+        contact.email = guest_email
+
     db.commit()
     db.refresh(appointment)
-    return appointment
+
+    email_to_use = guest_email or contact.email
+    email_sent = _send_confirmation_email(email_to_use, appointment) if email_to_use else False
+
+    return appointment, email_sent
 
 
 # ---------- Endpoints Dashboard (JWT) ----------
@@ -120,7 +166,9 @@ def create_reservation(
         raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
 
     try:
-        appointment = _book_reservation(db, organization_id, contact, payload.check_in, payload.check_out, payload.room_type)
+        appointment, email_sent = _book_reservation(
+            db, organization_id, contact, payload.check_in, payload.check_out, payload.room_type, payload.guest_email
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -128,6 +176,7 @@ def create_reservation(
         id=appointment.id, contact_id=appointment.contact_id, room_type=appointment.room_type,
         check_in=appointment.scheduled_at, check_out=appointment.check_out_at,
         pms_confirmation_number=appointment.pms_confirmation_number, status=appointment.status,
+        confirmation_email_sent=email_sent,
     )
 
 
@@ -145,6 +194,7 @@ class ToolReservationRequest(BaseModel):
     room_type: str
     guest_name: str
     guest_phone: str
+    guest_email: str | None = None
 
 
 @router.post("/tools/availability")
@@ -174,7 +224,8 @@ def tool_create_reservation(
     db: Session = Depends(get_db),
 ):
     """
-    Crée réellement la réservation pendant l'appel. Le contact est retrouvé
+    Crée réellement la réservation pendant l'appel, et envoie la
+    confirmation par email si le client l'a donné. Le contact est retrouvé
     (ou créé) par numéro de téléphone — l'agent n'a pas de contact_id du CRM
     à ce stade, seulement ce que dit l'appelant (section 18 : réutilisation
     par numéro, même logique que l'import CSV).
@@ -194,7 +245,9 @@ def tool_create_reservation(
         db.flush()
 
     try:
-        appointment = _book_reservation(db, organization_id, contact, check_in, check_out, payload.room_type)
+        appointment, email_sent = _book_reservation(
+            db, organization_id, contact, check_in, check_out, payload.room_type, payload.guest_email
+        )
     except ValueError as e:
         return {"success": False, "error": str(e)}
 
@@ -204,4 +257,5 @@ def tool_create_reservation(
         "room_type": appointment.room_type,
         "check_in": payload.check_in,
         "check_out": payload.check_out,
+        "confirmation_email_sent": email_sent,
     }

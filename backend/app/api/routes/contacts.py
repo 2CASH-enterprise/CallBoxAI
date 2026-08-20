@@ -33,6 +33,7 @@ class ContactCreate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str
+    email: str | None = None
     status: str = "Nouveau"
 
 
@@ -42,6 +43,7 @@ class ContactOut(BaseModel):
     first_name: str | None
     last_name: str | None
     phone: str
+    email: str | None
     status: str
 
     class Config:
@@ -162,7 +164,7 @@ def export_contacts(
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["phone", "first_name", "last_name", "status", "last_call_qualification", "last_call_score", "last_call_intent", "last_call_date"])
+    writer.writerow(["phone", "first_name", "last_name", "email", "status", "last_call_qualification", "last_call_score", "last_call_intent", "last_call_date"])
 
     for contact in contacts:
         last_call = (
@@ -175,6 +177,7 @@ def export_contacts(
             contact.phone,
             contact.first_name or "",
             contact.last_name or "",
+            contact.email or "",
             contact.status,
             last_call.qualification if last_call else "",
             last_call.score if last_call else "",

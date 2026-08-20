@@ -24,6 +24,7 @@ export default function ContactsPage() {
 
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [importOpen, setImportOpen] = useState(false);
@@ -46,9 +47,14 @@ export default function ContactsPage() {
     if (!currentOrg || !phone.trim()) return;
     setSubmitting(true);
     try {
-      await api.createContact(currentOrg.organization_id, { phone: phone.trim(), first_name: firstName.trim() || undefined });
+      await api.createContact(currentOrg.organization_id, {
+        phone: phone.trim(),
+        first_name: firstName.trim() || undefined,
+        email: email.trim() || undefined,
+      });
       setPhone("");
       setFirstName("");
+      setEmail("");
       load();
     } finally {
       setSubmitting(false);
@@ -146,6 +152,7 @@ export default function ContactsPage() {
       <form className={styles.addBar} onSubmit={handleAdd}>
         <input placeholder="Prénom (optionnel)" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         <input placeholder="Numéro de téléphone" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input placeholder="Email (optionnel)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           <Plus size={14} /> {submitting ? "Ajout…" : "Ajouter un contact"}
         </button>

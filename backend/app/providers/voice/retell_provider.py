@@ -88,6 +88,7 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                     "room_type": {"type": "string", "description": "Type de chambre choisi"},
                     "guest_name": {"type": "string", "description": "Nom du client"},
                     "guest_phone": {"type": "string", "description": "Numéro de téléphone du client, format international"},
+                    "guest_email": {"type": "string", "description": "Adresse email du client, pour l'envoi de la confirmation de réservation (optionnel si le client refuse de la donner)"},
                 },
                 "required": ["check_in", "check_out", "room_type", "guest_name", "guest_phone"],
             },

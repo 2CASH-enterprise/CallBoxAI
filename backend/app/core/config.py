@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # Vide par défaut : sans elle, les outils PMS ne sont simplement pas
     # enregistrés côté Retell (résilience, section 29), pas d'erreur bloquante.
     public_base_url: str = ""
+
+    # Email de confirmation (section 12/16) : Mailhog (docker-compose) par
+    # défaut, sans compte ni coût. À remplacer par un vrai SMTP en production.
+    smtp_host: str = "mailhog"
+    smtp_port: int = 1025
+    smtp_from_email: str = "reservations@callboxai.local"
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""

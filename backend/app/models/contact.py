@@ -19,6 +19,7 @@ class Contact(Base):
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     phone = Column(String, nullable=False)
+    email = Column(String, nullable=True)
     status = Column(String, default="Nouveau")
 
     created_at = Column(DateTime, default=datetime.utcnow)

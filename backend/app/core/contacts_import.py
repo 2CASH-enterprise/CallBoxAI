@@ -31,6 +31,7 @@ _PHONE_FORMATTING_CHARS = re.compile(r"[\s\-.()]")
 PHONE_COLUMN_ALIASES = {"phone", "telephone", "tel", "numero", "num", "mobile", "numero_de_telephone"}
 FIRST_NAME_COLUMN_ALIASES = {"first_name", "firstname", "prenom", "nom", "name"}
 LAST_NAME_COLUMN_ALIASES = {"last_name", "lastname", "nom_de_famille"}
+EMAIL_COLUMN_ALIASES = {"email", "mail", "courriel", "e-mail"}
 
 
 class ImportSummary(BaseModel):
@@ -71,6 +72,7 @@ def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_t
     phone_col = _find_column(fieldnames, PHONE_COLUMN_ALIASES) or "phone"
     first_name_col = _find_column(fieldnames, FIRST_NAME_COLUMN_ALIASES)
     last_name_col = _find_column(fieldnames, LAST_NAME_COLUMN_ALIASES)
+    email_col = _find_column(fieldnames, EMAIL_COLUMN_ALIASES)
 
     imported = 0
     skipped = 0
@@ -91,6 +93,7 @@ def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_t
                 phone=phone,
                 first_name=(row.get(first_name_col) or "").strip() or None if first_name_col else None,
                 last_name=(row.get(last_name_col) or "").strip() or None if last_name_col else None,
+                email=(row.get(email_col) or "").strip() or None if email_col else None,
             )
             db.add(contact)
             db.flush()
