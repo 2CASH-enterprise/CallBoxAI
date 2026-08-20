@@ -108,13 +108,15 @@ export default function AgentsPage() {
         "- proposer une réservation dès que le client exprime une intention claire de dates ;\n" +
         "- demander l'adresse email du client avant de finaliser la réservation, pour lui envoyer sa confirmation " +
         "(s'il refuse de la donner, continue quand même la réservation sans email) ;\n" +
-        "- transférer à la réception pour : une modification de réservation existante, une réclamation, " +
-        "ou toute demande urgente (problème dans la chambre, sécurité) ;\n" +
+        "- si le client veut modifier ou annuler une réservation existante, retrouve-la d'abord avec son numéro " +
+        "de téléphone, confirme les détails avec lui avant toute modification ou annulation ;\n" +
+        "- transférer à la réception uniquement pour une réclamation ou une demande urgente " +
+        "(problème dans la chambre, sécurité) — pas pour une simple modification de réservation, que tu peux gérer toi-même ;\n" +
         "- rester concise, les clients appellent souvent depuis leur téléphone en déplacement.",
       language: "multi",
       transfer_enabled: true,
       transfer_number: "+33100000000",
-      transfer_instructions: "Modification de réservation existante, réclamation, ou demande urgente (chambre, sécurité).",
+      transfer_instructions: "Réclamation, ou demande urgente (problème dans la chambre, sécurité).",
       voice_id: "",
       business_hours_start: "",
       business_hours_end: "",

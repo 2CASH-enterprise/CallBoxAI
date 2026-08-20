@@ -31,3 +31,15 @@ class PMSProvider(ABC):
     @abstractmethod
     def cancel_reservation(self, confirmation_number: str) -> dict:
         ...
+
+    @abstractmethod
+    def modify_reservation(
+        self, confirmation_number: str, check_in: date, check_out: date, room_type: str
+    ) -> dict:
+        """
+        Modifie les dates et/ou le type de chambre d'une réservation
+        existante. Retourne un dict avec confirmation_number, status,
+        rate_per_night, total_price (mis à jour). Lève ValueError si
+        aucune disponibilité pour les nouvelles dates/type demandés.
+        """
+        ...

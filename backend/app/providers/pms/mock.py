@@ -79,3 +79,18 @@ class MockPMSProvider(PMSProvider):
 
     def cancel_reservation(self, confirmation_number: str) -> dict:
         return {"confirmation_number": confirmation_number, "status": "cancelled"}
+
+    def modify_reservation(self, confirmation_number: str, check_in: date, check_out: date, room_type: str) -> dict:
+        offers = self.check_availability(check_in, check_out, room_type)
+        if not offers:
+            raise ValueError(f"Aucune disponibilité pour « {room_type} » du {check_in} au {check_out}")
+
+        offer = offers[0]
+        return {
+            "confirmation_number": confirmation_number,
+            "status": "confirmed",
+            "room_type": room_type,
+            "rate_per_night": offer["rate_per_night"],
+            "total_price": offer["total_price"],
+            "currency": offer["currency"],
+        }

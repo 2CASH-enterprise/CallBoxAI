@@ -259,3 +259,119 @@ def tool_create_reservation(
         "check_out": payload.check_out,
         "confirmation_email_sent": email_sent,
     }
+
+
+class ToolFindReservationRequest(BaseModel):
+    guest_phone: str
+    confirmation_number: str | None = None
+
+
+class ToolModifyReservationRequest(BaseModel):
+    confirmation_number: str
+    new_check_in: str | None = None
+    new_check_out: str | None = None
+    new_room_type: str | None = None
+
+
+class ToolCancelReservationRequest(BaseModel):
+    confirmation_number: str
+
+
+@router.post("/tools/find-reservation")
+def tool_find_reservation(payload: ToolFindReservationRequest, organization_id: uuid.UUID = Query(...), db: Session = Depends(get_db)):
+    """
+    Retrouve les réservations actives d'un client, par téléphone (le contact
+    n'a pas forcément le numéro de confirmation en tête) ou par numéro de
+    confirmation direct. Utilisé avant une modification ou une annulation
+    pendant l'appel (section 16).
+    """
+    query = db.query(Appointment).filter(
+        Appointment.organization_id == organization_id,
+        Appointment.room_type.isnot(None),  # uniquement les réservations hôtelières
+        Appointment.status != "cancelled",
+    )
+    if payload.confirmation_number:
+        query = query.filter(Appointment.pms_confirmation_number == payload.confirmation_number)
+    else:
+        query = query.join(Contact, Contact.id == Appointment.contact_id).filter(Contact.phone == payload.guest_phone)
+
+    appointments = query.order_by(Appointment.scheduled_at.desc()).all()
+
+    if not appointments:
+        return {"found": False, "message": "Aucune réservation active trouvée pour ce numéro."}
+
+    return {
+        "found": True,
+        "reservations": [
+            {
+                "confirmation_number": a.pms_confirmation_number,
+                "room_type": a.room_type,
+                "check_in": a.scheduled_at.date().isoformat(),
+                "check_out": a.check_out_at.date().isoformat() if a.check_out_at else None,
+                "status": a.status,
+            }
+            for a in appointments
+        ],
+    }
+
+
+@router.post("/tools/modify-reservation")
+def tool_modify_reservation(payload: ToolModifyReservationRequest, organization_id: uuid.UUID = Query(...), db: Session = Depends(get_db)):
+    """
+    Modifie les dates et/ou le type de chambre d'une réservation existante,
+    EN DIRECT pendant l'appel — vérifie d'abord la disponibilité des
+    nouvelles dates avant de confirmer le changement (section 16).
+    """
+    appointment = db.query(Appointment).filter(
+        Appointment.organization_id == organization_id,
+        Appointment.pms_confirmation_number == payload.confirmation_number,
+    ).first()
+    if not appointment or appointment.status == "cancelled":
+        return {"success": False, "error": "Réservation introuvable ou déjà annulée."}
+
+    new_check_in = date.fromisoformat(payload.new_check_in) if payload.new_check_in else appointment.scheduled_at.date()
+    new_check_out = date.fromisoformat(payload.new_check_out) if payload.new_check_out else appointment.check_out_at.date()
+    new_room_type = payload.new_room_type or appointment.room_type
+
+    try:
+        result = pms_provider.modify_reservation(payload.confirmation_number, new_check_in, new_check_out, new_room_type)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    appointment.scheduled_at = datetime.combine(new_check_in, datetime.min.time())
+    appointment.check_out_at = datetime.combine(new_check_out, datetime.min.time())
+    appointment.room_type = new_room_type
+    appointment.duration_minutes = (new_check_out - new_check_in).days * 24 * 60
+    appointment.notes = f"Réservation modifiée — {result['total_price']} {result['currency']}."
+    db.commit()
+
+    return {
+        "success": True,
+        "confirmation_number": appointment.pms_confirmation_number,
+        "room_type": new_room_type,
+        "check_in": new_check_in.isoformat(),
+        "check_out": new_check_out.isoformat(),
+    }
+
+
+@router.post("/tools/cancel-reservation")
+def tool_cancel_reservation(payload: ToolCancelReservationRequest, organization_id: uuid.UUID = Query(...), db: Session = Depends(get_db)):
+    """Annule une réservation EN DIRECT pendant l'appel (section 16)."""
+    appointment = db.query(Appointment).filter(
+        Appointment.organization_id == organization_id,
+        Appointment.pms_confirmation_number == payload.confirmation_number,
+    ).first()
+    if not appointment:
+        return {"success": False, "error": "Réservation introuvable."}
+    if appointment.status == "cancelled":
+        return {"success": True, "already_cancelled": True}
+
+    try:
+        pms_provider.cancel_reservation(payload.confirmation_number)
+    except Exception:
+        logger.exception("Échec de l'annulation PMS pour %s", payload.confirmation_number)
+
+    appointment.status = "cancelled"
+    db.commit()
+
+    return {"success": True, "confirmation_number": payload.confirmation_number}

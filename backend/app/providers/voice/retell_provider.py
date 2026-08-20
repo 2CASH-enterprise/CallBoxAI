@@ -93,6 +93,63 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                 "required": ["check_in", "check_out", "room_type", "guest_name", "guest_phone"],
             },
         },
+        {
+            "type": "custom",
+            "name": "find_reservation",
+            "description": (
+                "Retrouve les réservations actives d'un client à partir de son numéro de téléphone, "
+                "ou d'un numéro de confirmation s'il le connaît. Utilise ceci avant toute modification "
+                "ou annulation — le client rappelle souvent sans avoir son numéro de confirmation en tête."
+            ),
+            "url": f"{base}/pms/tools/find-reservation?organization_id={organization_id}",
+            "speak_during_execution": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guest_phone": {"type": "string", "description": "Numéro de téléphone du client, format international"},
+                    "confirmation_number": {"type": "string", "description": "Numéro de confirmation si le client le connaît (optionnel)"},
+                },
+                "required": ["guest_phone"],
+            },
+        },
+        {
+            "type": "custom",
+            "name": "modify_reservation",
+            "description": (
+                "Modifie les dates et/ou le type de chambre d'une réservation existante. "
+                "Utilise find_reservation d'abord pour obtenir le numéro de confirmation exact. "
+                "Vérifie automatiquement la disponibilité des nouvelles dates avant de confirmer."
+            ),
+            "url": f"{base}/pms/tools/modify-reservation?organization_id={organization_id}",
+            "speak_during_execution": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "confirmation_number": {"type": "string", "description": "Numéro de confirmation de la réservation à modifier"},
+                    "new_check_in": {"type": "string", "description": "Nouvelle date d'arrivée au format AAAA-MM-JJ (optionnel si inchangée)"},
+                    "new_check_out": {"type": "string", "description": "Nouvelle date de départ au format AAAA-MM-JJ (optionnel si inchangée)"},
+                    "new_room_type": {"type": "string", "description": "Nouveau type de chambre (optionnel si inchangé)"},
+                },
+                "required": ["confirmation_number"],
+            },
+        },
+        {
+            "type": "custom",
+            "name": "cancel_reservation",
+            "description": (
+                "Annule définitivement une réservation existante. Utilise find_reservation d'abord "
+                "pour confirmer le bon numéro de réservation avec le client avant d'annuler."
+            ),
+            "url": f"{base}/pms/tools/cancel-reservation?organization_id={organization_id}",
+            "speak_during_execution": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "confirmation_number": {"type": "string", "description": "Numéro de confirmation de la réservation à annuler"},
+                },
+                "required": ["confirmation_number"],
+            },
+        },
     ]
 
 
