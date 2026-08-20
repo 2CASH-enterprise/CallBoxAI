@@ -1,13 +1,20 @@
 """
 Endpoints PMS (Property Management System — section 5/16 du cahier des
-charges). Vérification de disponibilité et création de réservation pour
-l'agent réceptionniste hôtelier, via l'abstraction PMSProvider.
+charges), via l'abstraction PMSProvider. Deux familles d'endpoints :
+
+- /pms/availability, /pms/reservations : utilisés par le DASHBOARD (staff de
+  l'hôtel), protégés par JWT comme le reste de la plateforme.
+- /pms/tools/... : utilisés par RETELL PENDANT UN VRAI APPEL (function
+  calling, section 16), donc SANS JWT — Retell ne peut pas s'authentifier
+  comme un utilisateur du dashboard. Scopés par organization_id en query
+  param (configuré une fois pour toutes au provisionnement de l'agent, voir
+  app.api.routes.agents et app.providers.voice.retell_provider).
 """
 import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -59,16 +66,45 @@ class ReservationOut(BaseModel):
     status: str
 
 
+def _book_reservation(db: Session, organization_id: uuid.UUID, contact: Contact, check_in: date, check_out: date, room_type: str) -> Appointment:
+    """Logique de réservation partagée entre le dashboard et les outils Retell."""
+    result = pms_provider.create_reservation(
+        check_in=check_in,
+        check_out=check_out,
+        room_type=room_type,
+        guest_name=f"{contact.first_name or ''} {contact.last_name or ''}".strip() or contact.phone,
+        guest_phone=contact.phone,
+    )
+
+    appointment = Appointment(
+        organization_id=organization_id,
+        contact_id=contact.id,
+        scheduled_at=datetime.combine(check_in, datetime.min.time()),
+        check_out_at=datetime.combine(check_out, datetime.min.time()),
+        duration_minutes=(check_out - check_in).days * 24 * 60,
+        status="confirmed",
+        room_type=room_type,
+        pms_confirmation_number=result["confirmation_number"],
+        notes=f"Réservation PMS {result['confirmation_number']} — {result['total_price']} {result['currency']}.",
+    )
+    db.add(appointment)
+    contact.status = "RDV"
+    db.commit()
+    db.refresh(appointment)
+    return appointment
+
+
+# ---------- Endpoints Dashboard (JWT) ----------
+
 @router.post("/availability", response_model=list[AvailabilityOffer])
 def check_availability(
     payload: AvailabilityRequest,
     _organization_id: uuid.UUID = Depends(require_organization_access),
 ):
     try:
-        offers = pms_provider.check_availability(payload.check_in, payload.check_out, payload.room_type)
+        return pms_provider.check_availability(payload.check_in, payload.check_out, payload.room_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return offers
 
 
 @router.post("/reservations", response_model=ReservationOut)
@@ -83,42 +119,89 @@ def create_reservation(
     if not contact:
         raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
 
-    guest_name = f"{contact.first_name or ''} {contact.last_name or ''}".strip() or contact.phone
-
     try:
-        result = pms_provider.create_reservation(
-            check_in=payload.check_in,
-            check_out=payload.check_out,
-            room_type=payload.room_type,
-            guest_name=guest_name,
-            guest_phone=contact.phone,
-            num_guests=payload.num_guests,
-        )
+        appointment = _book_reservation(db, organization_id, contact, payload.check_in, payload.check_out, payload.room_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    appointment = Appointment(
-        organization_id=organization_id,
-        contact_id=contact.id,
-        scheduled_at=datetime.combine(payload.check_in, datetime.min.time()),
-        check_out_at=datetime.combine(payload.check_out, datetime.min.time()),
-        duration_minutes=(payload.check_out - payload.check_in).days * 24 * 60,
-        status="confirmed",
-        room_type=payload.room_type,
-        pms_confirmation_number=result["confirmation_number"],
-        notes=f"Réservation PMS {result['confirmation_number']} — {result['total_price']} {result['currency']}.",
-    )
-    db.add(appointment)
-    contact.status = "RDV"
-    db.commit()
-    db.refresh(appointment)
-
     return ReservationOut(
-        id=appointment.id,
-        contact_id=appointment.contact_id,
-        room_type=appointment.room_type,
-        check_in=appointment.scheduled_at,
-        check_out=appointment.check_out_at,
-        pms_confirmation_number=appointment.pms_confirmation_number,
-        status=appointment.status,
+        id=appointment.id, contact_id=appointment.contact_id, room_type=appointment.room_type,
+        check_in=appointment.scheduled_at, check_out=appointment.check_out_at,
+        pms_confirmation_number=appointment.pms_confirmation_number, status=appointment.status,
     )
+
+
+# ---------- Endpoints "outils" appelés par Retell PENDANT un vrai appel ----------
+
+class ToolAvailabilityRequest(BaseModel):
+    check_in: str
+    check_out: str
+    room_type: str | None = None
+
+
+class ToolReservationRequest(BaseModel):
+    check_in: str
+    check_out: str
+    room_type: str
+    guest_name: str
+    guest_phone: str
+
+
+@router.post("/tools/availability")
+def tool_check_availability(payload: ToolAvailabilityRequest, organization_id: uuid.UUID = Query(...)):
+    """
+    Appelé par Retell EN DIRECT pendant l'appel (function calling, section
+    16) — pas de JWT (Retell ne peut pas s'authentifier comme un
+    utilisateur), scopé par organization_id fixé une fois pour toutes au
+    provisionnement de l'agent. Réponse pensée pour être lue par le LLM.
+    """
+    try:
+        check_in = date.fromisoformat(payload.check_in)
+        check_out = date.fromisoformat(payload.check_out)
+        offers = pms_provider.check_availability(check_in, check_out, payload.room_type)
+    except ValueError as e:
+        return {"available": False, "error": str(e)}
+
+    if not offers:
+        return {"available": False, "message": "Aucune chambre disponible pour ces dates."}
+    return {"available": True, "offers": offers}
+
+
+@router.post("/tools/reservations")
+def tool_create_reservation(
+    payload: ToolReservationRequest,
+    organization_id: uuid.UUID = Query(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Crée réellement la réservation pendant l'appel. Le contact est retrouvé
+    (ou créé) par numéro de téléphone — l'agent n'a pas de contact_id du CRM
+    à ce stade, seulement ce que dit l'appelant (section 18 : réutilisation
+    par numéro, même logique que l'import CSV).
+    """
+    try:
+        check_in = date.fromisoformat(payload.check_in)
+        check_out = date.fromisoformat(payload.check_out)
+    except ValueError:
+        return {"success": False, "error": "Format de date invalide (attendu AAAA-MM-JJ)."}
+
+    contact = db.query(Contact).filter(
+        Contact.organization_id == organization_id, Contact.phone == payload.guest_phone
+    ).first()
+    if not contact:
+        contact = Contact(organization_id=organization_id, phone=payload.guest_phone, first_name=payload.guest_name)
+        db.add(contact)
+        db.flush()
+
+    try:
+        appointment = _book_reservation(db, organization_id, contact, check_in, check_out, payload.room_type)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    return {
+        "success": True,
+        "confirmation_number": appointment.pms_confirmation_number,
+        "room_type": appointment.room_type,
+        "check_in": payload.check_in,
+        "check_out": payload.check_out,
+    }

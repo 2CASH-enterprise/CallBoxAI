@@ -42,6 +42,59 @@ def _language_code(language: str) -> str:
     return _LANGUAGE_CODES.get(language, "fr-FR")
 
 
+def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
+    """
+    Construit les outils "function calling" (section 16) que l'agent peut
+    appeler EN DIRECT pendant l'appel pour consulter le PMS. organization_id
+    est fixé une fois pour toutes ici (valeur "const", pas résolue par le
+    LLM) : Retell ne connaît pas nos organisations, seule l'URL de l'outil
+    encode celle concernée par cet agent précis.
+    """
+    base = public_base_url.rstrip("/")
+    return [
+        {
+            "type": "custom",
+            "name": "check_room_availability",
+            "description": (
+                "Vérifie la disponibilité et le tarif des chambres pour des dates données. "
+                "Utilise ceci dès que le client demande une réservation ou une disponibilité."
+            ),
+            "url": f"{base}/pms/tools/availability?organization_id={organization_id}",
+            "speak_during_execution": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "check_in": {"type": "string", "description": "Date d'arrivée au format AAAA-MM-JJ"},
+                    "check_out": {"type": "string", "description": "Date de départ au format AAAA-MM-JJ"},
+                    "room_type": {"type": "string", "description": "Type de chambre demandé (optionnel)"},
+                },
+                "required": ["check_in", "check_out"],
+            },
+        },
+        {
+            "type": "custom",
+            "name": "create_room_reservation",
+            "description": (
+                "Crée réellement la réservation une fois que le client a confirmé les dates, "
+                "le type de chambre, et donné son nom et son numéro de téléphone."
+            ),
+            "url": f"{base}/pms/tools/reservations?organization_id={organization_id}",
+            "speak_during_execution": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "check_in": {"type": "string", "description": "Date d'arrivée au format AAAA-MM-JJ"},
+                    "check_out": {"type": "string", "description": "Date de départ au format AAAA-MM-JJ"},
+                    "room_type": {"type": "string", "description": "Type de chambre choisi"},
+                    "guest_name": {"type": "string", "description": "Nom du client"},
+                    "guest_phone": {"type": "string", "description": "Numéro de téléphone du client, format international"},
+                },
+                "required": ["check_in", "check_out", "room_type", "guest_name", "guest_phone"],
+            },
+        },
+    ]
+
+
 class RetellProvider(VoiceProvider):
     def __init__(self, api_key: str, agent_id: str):
         self._agent_id = agent_id
@@ -51,12 +104,12 @@ class RetellProvider(VoiceProvider):
             timeout=30.0,
         )
 
-    def create_llm(self, general_prompt: str, model: str) -> dict:
-        """Crée le "cerveau" LLM de l'agent côté Retell (prompt système)."""
-        response = self._client.post(
-            "/create-retell-llm",
-            json={"model": model, "general_prompt": general_prompt},
-        )
+    def create_llm(self, general_prompt: str, model: str, tools: list[dict] | None = None) -> dict:
+        """Crée le "cerveau" LLM de l'agent côté Retell (prompt système, et outils éventuels)."""
+        payload = {"model": model, "general_prompt": general_prompt}
+        if tools:
+            payload["general_tools"] = tools
+        response = self._client.post("/create-retell-llm", json=payload)
         response.raise_for_status()
         return response.json()
 
@@ -87,17 +140,40 @@ class RetellProvider(VoiceProvider):
         except ValueError:
             return {}
 
-    def provision_agent(self, name: str, system_prompt: str, language: str, model: str, voice_id: str) -> str:
+    def provision_agent(
+        self,
+        name: str,
+        system_prompt: str,
+        language: str,
+        model: str,
+        voice_id: str,
+        pms_enabled: bool = False,
+        organization_id: str | None = None,
+        public_base_url: str | None = None,
+    ) -> str:
         """
         Crée automatiquement, côté Retell, tout ce qu'il faut pour qu'un
-        agent CallBoxAI soit réellement appelable : le LLM (prompt), l'agent
-        vocal (voix), puis le publie. Retourne l'agent_id Retell résultant.
+        agent CallBoxAI soit réellement appelable : le LLM (prompt, outils
+        éventuels), l'agent vocal (voix), puis le publie. Retourne
+        l'agent_id Retell résultant.
 
         C'est cette méthode qui rend l'intégration Retell invisible pour le
         client final (section 1 : "AI Contact Center as a Service") — il n'a
         jamais besoin de connaître ni de manipuler le dashboard Retell.
+
+        Si pms_enabled est vrai ET qu'une organization_id/public_base_url
+        sont fournies, l'agent reçoit les outils de consultation/réservation
+        PMS EN DIRECT pendant l'appel (section 16). Sans ces informations,
+        l'agent se crée quand même, simplement sans ces outils — résilience
+        (section 29), pas de blocage sur une configuration manquante.
         """
-        llm = self.create_llm(general_prompt=system_prompt or f"Tu es {name}, un assistant vocal utile.", model=model)
+        tools = None
+        if pms_enabled and organization_id and public_base_url:
+            tools = _build_pms_tools(organization_id, public_base_url)
+
+        llm = self.create_llm(
+            general_prompt=system_prompt or f"Tu es {name}, un assistant vocal utile.", model=model, tools=tools
+        )
         agent = self.create_retell_agent(
             name=name, llm_id=llm["llm_id"], voice_id=voice_id, language=_language_code(language)
         )

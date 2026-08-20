@@ -52,4 +52,10 @@ class Agent(Base):
     # simple transcript non exploité.
     ticketing_enabled = Column(Boolean, default=False)
 
+    # PMS (Property Management System, section 5/16 du cahier des charges) :
+    # quand activé, l'agent peut consulter la disponibilité et créer une
+    # réservation EN DIRECT pendant l'appel réel (via les outils Retell), pas
+    # seulement depuis le dashboard. Sans intérêt pour un agent non-hôtelier.
+    pms_enabled = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # remplacer ce réglage par défaut.
     retell_default_llm_model: str = "gpt-4o-mini"
     retell_default_voice_id: str = "cartesia-Emma"
+
+    # URL publique de CE backend (ex. "http://178.104.56.200:8010"), utilisée
+    # pour que Retell puisse appeler nos "outils" (function calling) EN DIRECT
+    # pendant un vrai appel (section 16 — intégration PMS en temps réel).
+    # Vide par défaut : sans elle, les outils PMS ne sont simplement pas
+    # enregistrés côté Retell (résilience, section 29), pas d'erreur bloquante.
+    public_base_url: str = ""
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""

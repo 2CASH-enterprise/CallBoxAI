@@ -25,7 +25,7 @@ export default function AgentsPage() {
   const [savingVoice, setSavingVoice] = useState(false);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
-    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false,
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false,
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,6 +60,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: false,
+      pms_enabled: false,
     });
     setModalOpen(true);
   }
@@ -87,6 +88,7 @@ export default function AgentsPage() {
       business_hours_start: "08:00",
       business_hours_end: "18:00",
       ticketing_enabled: true,
+      pms_enabled: false,
     });
     setModalOpen(true);
   }
@@ -115,6 +117,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: true,
+      pms_enabled: true,
     });
     setModalOpen(true);
   }
@@ -145,6 +148,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: true,
+      pms_enabled: false,
     });
     setModalOpen(true);
   }
@@ -157,7 +161,7 @@ export default function AgentsPage() {
       await api.createAgent(currentOrg.organization_id, form);
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
-        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false,
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false,
       });
       setModalOpen(false);
       load();
@@ -371,6 +375,23 @@ export default function AgentsPage() {
                 />
                 Activer le service client (crée un ticket de suivi pour chaque appel entrant)
               </label>
+            </div>
+
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.pms_enabled}
+                  onChange={(e) => setForm({ ...form, pms_enabled: e.target.checked })}
+                />
+                Connecter au PMS (l'agent vérifie la disponibilité et réserve en direct pendant l'appel réel)
+              </label>
+              {form.pms_enabled && (
+                <p className={styles.voiceHint}>
+                  Fonctionne uniquement sur un vrai appel (test vocal ou appel réel) — la simulation ne consulte
+                  jamais le PMS. Nécessite PUBLIC_BASE_URL configuré sur le serveur.
+                </p>
+              )}
             </div>
 
             <div>

@@ -31,6 +31,7 @@ class AgentCreate(BaseModel):
     business_hours_start: str | None = None
     business_hours_end: str | None = None
     ticketing_enabled: bool = False
+    pms_enabled: bool = False
 
 
 class AgentUpdate(BaseModel):
@@ -45,6 +46,7 @@ class AgentUpdate(BaseModel):
     business_hours_start: str | None = None
     business_hours_end: str | None = None
     ticketing_enabled: bool | None = None
+    pms_enabled: bool | None = None
 
 
 class AgentOut(BaseModel):
@@ -61,6 +63,7 @@ class AgentOut(BaseModel):
     business_hours_start: str | None
     business_hours_end: str | None
     ticketing_enabled: bool
+    pms_enabled: bool
 
     class Config:
         from_attributes = True
@@ -95,6 +98,9 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
             language=agent.language,
             model=settings.retell_default_llm_model,
             voice_id=agent.voice_id or settings.retell_default_voice_id,
+            pms_enabled=agent.pms_enabled,
+            organization_id=str(agent.organization_id),
+            public_base_url=settings.public_base_url or None,
         )
     except Exception:
         logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
@@ -143,7 +149,7 @@ def update_agent(
         raise HTTPException(status_code=404, detail="Agent introuvable pour cette organisation")
 
     updates = payload.model_dump(exclude_unset=True)
-    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name"))
+    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled"))
 
     for field, value in updates.items():
         setattr(agent, field, value)
