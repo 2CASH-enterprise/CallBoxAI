@@ -80,14 +80,17 @@ class WebCallOut(BaseModel):
 
 def _provision_retell_agent_if_configured(agent: Agent) -> None:
     """
-    Crée automatiquement l'agent correspondant côté Retell (section 16), de
-    façon invisible pour le client — voir RetellProvider.provision_agent().
+    Crée (ou MET À JOUR si l'agent a déjà été provisionné) l'agent
+    correspondant côté Retell (section 16), de façon invisible pour le
+    client — voir RetellProvider.provision_agent(). Mettre à jour plutôt que
+    recréer évite d'accumuler des agents Retell orphelins à chaque
+    modification (voix, prompt...).
 
     Résilience (section 29) : si Retell est injoignable ou en erreur, on ne
-    bloque JAMAIS la création de l'agent CallBoxAI — on journalise et on
-    laisse retell_agent_id vide ; le client peut continuer à travailler
-    (base de connaissances, campagnes...) même sans agent vocal actif, et un
-    administrateur pourra relancer le provisionnement plus tard.
+    bloque JAMAIS la création/modification de l'agent CallBoxAI — on
+    journalise et on laisse retell_agent_id inchangé ; le client peut
+    continuer à travailler (base de connaissances, campagnes...) même sans
+    agent vocal à jour, et un administrateur pourra relancer plus tard.
     """
     if settings.voice_provider != "retell" or not settings.retell_api_key:
         return
@@ -96,7 +99,7 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
         from app.providers.voice.retell_provider import RetellProvider
 
         provider = RetellProvider(api_key=settings.retell_api_key, agent_id="")
-        agent.retell_agent_id = provider.provision_agent(
+        result = provider.provision_agent(
             name=agent.name,
             system_prompt=agent.system_prompt or "",
             language=agent.language,
@@ -104,8 +107,12 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
             voice_id=agent.voice_id or settings.retell_default_voice_id,
             pms_enabled=agent.pms_enabled,
             organization_id=str(agent.organization_id),
+            existing_agent_id=agent.retell_agent_id,
+            existing_llm_id=agent.retell_llm_id,
             public_base_url=settings.public_base_url or None,
         )
+        agent.retell_agent_id = result["agent_id"]
+        agent.retell_llm_id = result["llm_id"]
     except Exception:
         logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
 

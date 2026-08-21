@@ -81,7 +81,7 @@ def test_real_call_full_success_path(client):
     headers = setup_org(client)
 
     with patch("app.providers.voice.retell_provider.RetellProvider.provision_agent") as mock_provision:
-        mock_provision.return_value = "agent_retell_fake"
+        mock_provision.return_value = {"agent_id": "agent_retell_fake", "llm_id": "llm_retell_fake"}
         with patch("app.api.routes.agents.settings") as mock_agent_settings:
             mock_agent_settings.voice_provider = "retell"
             mock_agent_settings.retell_api_key = "fake_key"

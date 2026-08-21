@@ -33,6 +33,10 @@ class Agent(Base):
     # Optionnel : si vide, on retombe sur RETELL_AGENT_ID (configuration
     # globale) si défini.
     retell_agent_id = Column(String, nullable=True)
+    # ID du LLM Retell associé — nécessaire pour METTRE À JOUR l'agent
+    # existant plutôt que d'en recréer un nouveau à chaque modification
+    # (voix, prompt...), voir RetellProvider.provision_agent().
+    retell_llm_id = Column(String, nullable=True)
 
     # Voix à utiliser pour cet agent (ex. "11labs-Charlotte", récupéré dans
     # l'onglet "Voices" du dashboard Retell). Optionnel : si vide, la voix

@@ -21,7 +21,7 @@ def test_agent_creation_succeeds_without_retell_configured(client):
 
 @patch("app.providers.voice.retell_provider.RetellProvider.provision_agent")
 def test_agent_creation_auto_provisions_retell_agent_when_configured(mock_provision, client):
-    mock_provision.return_value = "agent_fake_provisioned_123"
+    mock_provision.return_value = {"agent_id": "agent_fake_provisioned_123", "llm_id": "llm_fake_123"}
     token, org_id = register_user(client)
     headers = {**auth_headers(token), "x-organization-id": org_id}
 
@@ -95,7 +95,8 @@ def test_retell_provider_provision_agent_orchestrates_correctly(mock_post):
         model="gpt-4o-mini", voice_id="retell-Cimo",
     )
 
-    assert result == "agent_fake456"
+    assert result["agent_id"] == "agent_fake456"
+    assert result["llm_id"] == "llm_fake123"
     assert mock_post.call_count == 3
 
     llm_call = mock_post.call_args_list[0]
@@ -141,4 +142,4 @@ def test_retell_provider_provision_agent_handles_empty_publish_response(mock_pos
         model="gpt-4o-mini", voice_id="retell-Cimo",
     )
 
-    assert result == "agent_fake456"  # ne plante pas, retourne bien l'agent_id
+    assert result["agent_id"] == "agent_fake456"  # ne plante pas, retourne bien l'agent_id

@@ -171,6 +171,15 @@ class RetellProvider(VoiceProvider):
         response.raise_for_status()
         return response.json()
 
+    def update_llm(self, llm_id: str, general_prompt: str, model: str, tools: list[dict] | None = None) -> dict:
+        """Met à jour le LLM EXISTANT (prompt, outils) plutôt que d'en créer un nouveau — crée un brouillon (à publier)."""
+        payload = {"model": model, "general_prompt": general_prompt}
+        if tools:
+            payload["general_tools"] = tools
+        response = self._client.patch(f"/update-retell-llm/{llm_id}", json=payload)
+        response.raise_for_status()
+        return response.json()
+
     def create_retell_agent(self, name: str, llm_id: str, voice_id: str, language: str | None = None, webhook_url: str | None = None) -> dict:
         """
         Crée l'agent vocal côté Retell, attaché au LLM créé précédemment.
@@ -188,6 +197,19 @@ class RetellProvider(VoiceProvider):
         if webhook_url:
             payload["webhook_url"] = webhook_url
         response = self._client.post("/create-agent", json=payload)
+        response.raise_for_status()
+        return response.json()
+
+    def update_agent(self, agent_id: str, voice_id: str | None = None, language: str | None = None, webhook_url: str | None = None) -> dict:
+        """Met à jour l'agent EXISTANT (voix, langue, webhook) — crée un brouillon (à publier)."""
+        payload = {}
+        if voice_id:
+            payload["voice_id"] = voice_id
+        if language:
+            payload["language"] = language
+        if webhook_url:
+            payload["webhook_url"] = webhook_url
+        response = self._client.patch(f"/update-agent/{agent_id}", json=payload)
         response.raise_for_status()
         return response.json()
 
@@ -215,12 +237,20 @@ class RetellProvider(VoiceProvider):
         pms_enabled: bool = False,
         organization_id: str | None = None,
         public_base_url: str | None = None,
-    ) -> str:
+        existing_agent_id: str | None = None,
+        existing_llm_id: str | None = None,
+    ) -> dict:
         """
-        Crée automatiquement, côté Retell, tout ce qu'il faut pour qu'un
-        agent CallBoxAI soit réellement appelable : le LLM (prompt, outils
-        éventuels), l'agent vocal (voix), puis le publie. Retourne
-        l'agent_id Retell résultant.
+        Crée (ou MET À JOUR si existing_agent_id/existing_llm_id sont
+        fournis) tout ce qu'il faut côté Retell pour qu'un agent CallBoxAI
+        soit réellement appelable : le LLM (prompt, outils éventuels),
+        l'agent vocal (voix), puis publie la nouvelle version. Retourne
+        {"agent_id": ..., "llm_id": ...}.
+
+        Mettre à jour plutôt que recréer (section 16) évite d'accumuler des
+        agents Retell orphelins à chaque modification (voix, prompt...) —
+        chaque appel à provision_agent() sans ces deux paramètres créait
+        auparavant un TOUT NOUVEL agent, jamais nettoyé côté Retell.
 
         C'est cette méthode qui rend l'intégration Retell invisible pour le
         client final (section 1 : "AI Contact Center as a Service") — il n'a
@@ -237,15 +267,20 @@ class RetellProvider(VoiceProvider):
             tools = _build_pms_tools(organization_id, public_base_url)
 
         webhook_url = f"{public_base_url.rstrip('/')}/webhooks/retell" if public_base_url else None
+        prompt = system_prompt or f"Tu es {name}, un assistant vocal utile."
 
-        llm = self.create_llm(
-            general_prompt=system_prompt or f"Tu es {name}, un assistant vocal utile.", model=model, tools=tools
-        )
+        if existing_agent_id and existing_llm_id:
+            self.update_llm(existing_llm_id, general_prompt=prompt, model=model, tools=tools)
+            self.update_agent(existing_agent_id, voice_id=voice_id, language=_language_code(language), webhook_url=webhook_url)
+            self.publish_agent(existing_agent_id)
+            return {"agent_id": existing_agent_id, "llm_id": existing_llm_id}
+
+        llm = self.create_llm(general_prompt=prompt, model=model, tools=tools)
         agent = self.create_retell_agent(
             name=name, llm_id=llm["llm_id"], voice_id=voice_id, language=_language_code(language), webhook_url=webhook_url
         )
         self.publish_agent(agent["agent_id"])
-        return agent["agent_id"]
+        return {"agent_id": agent["agent_id"], "llm_id": llm["llm_id"]}
 
     def create_web_call(self, agent_id: str | None = None) -> dict:
         """

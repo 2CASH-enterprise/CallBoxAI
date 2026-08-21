@@ -18,7 +18,7 @@ def setup_agent(client, with_retell_agent=False):
 
     if with_retell_agent:
         with patch("app.providers.voice.retell_provider.RetellProvider.provision_agent") as mock_provision:
-            mock_provision.return_value = "retell-agent-fake"
+            mock_provision.return_value = {"agent_id": "retell-agent-fake", "llm_id": "llm-fake"}
             with patch("app.api.routes.agents.settings") as mock_settings:
                 mock_settings.voice_provider = "retell"
                 mock_settings.retell_api_key = "fake_key"
