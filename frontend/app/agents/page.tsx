@@ -270,6 +270,24 @@ export default function AgentsPage() {
                   </button>
                 </div>
               )}
+              {agent.retell_agent_id && (
+                <div
+                  onClick={() => navigator.clipboard.writeText(agent.retell_agent_id!)}
+                  title="Cliquer pour copier"
+                  style={{
+                    marginTop: 8,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10.5,
+                    color: "var(--color-muted)",
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {agent.retell_agent_id}
+                </div>
+              )}
             </div>
           ))}
         </div>
