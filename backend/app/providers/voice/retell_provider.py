@@ -200,8 +200,18 @@ class RetellProvider(VoiceProvider):
         response.raise_for_status()
         return response.json()
 
-    def update_agent(self, agent_id: str, voice_id: str | None = None, language: str | None = None, webhook_url: str | None = None) -> dict:
-        """Met à jour l'agent EXISTANT (voix, langue, webhook) — crée un brouillon (à publier)."""
+    def update_agent(
+        self, agent_id: str, voice_id: str | None = None, language: str | None = None,
+        webhook_url: str | None = None, llm_id: str | None = None,
+    ) -> dict:
+        """
+        Met à jour l'agent EXISTANT (voix, langue, webhook) — crée un
+        brouillon (à publier). Réémettre `llm_id` (response_engine) à
+        chaque mise à jour, même inchangé, force Retell à rattacher l'agent
+        à la dernière version du LLM — plusieurs retours de la communauté
+        Retell rapportent que sans ça, un agent peut continuer à utiliser
+        une ancienne version du prompt après une mise à jour du LLM seul.
+        """
         payload = {}
         if voice_id:
             payload["voice_id"] = voice_id
@@ -209,6 +219,8 @@ class RetellProvider(VoiceProvider):
             payload["language"] = language
         if webhook_url:
             payload["webhook_url"] = webhook_url
+        if llm_id:
+            payload["response_engine"] = {"type": "retell-llm", "llm_id": llm_id}
         response = self._client.patch(f"/update-agent/{agent_id}", json=payload)
         response.raise_for_status()
         return response.json()
@@ -271,7 +283,10 @@ class RetellProvider(VoiceProvider):
 
         if existing_agent_id and existing_llm_id:
             self.update_llm(existing_llm_id, general_prompt=prompt, model=model, tools=tools)
-            self.update_agent(existing_agent_id, voice_id=voice_id, language=_language_code(language), webhook_url=webhook_url)
+            self.update_agent(
+                existing_agent_id, voice_id=voice_id, language=_language_code(language),
+                webhook_url=webhook_url, llm_id=existing_llm_id,
+            )
             self.publish_agent(existing_agent_id)
             return {"agent_id": existing_agent_id, "llm_id": existing_llm_id}
 
