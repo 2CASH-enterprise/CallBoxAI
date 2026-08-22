@@ -177,3 +177,43 @@ def test_pms_tool_schema_includes_email_parameter():
     assert "guest_email" in reservation_tool["parameters"]["properties"]
     # Optionnel : ne doit pas être dans "required" (le client peut refuser)
     assert "guest_email" not in reservation_tool["parameters"]["required"]
+
+
+@patch("app.providers.email.mock.MockEmailProvider.send")
+def test_confirmation_email_includes_hotel_name_and_html(mock_send, client, db_session):
+    """
+    L'email de confirmation doit être personnalisé au nom de l'établissement
+    (Organization.name), avec une version HTML soignée en plus du texte brut
+    — pas la marque blanche des distributeurs, qui concerne le dashboard.
+    """
+    headers = setup_org(client)
+    # Renomme l'organisation pour vérifier que le nom apparaît bien dans l'email
+    from app.models.organization import Organization
+    import uuid as uuid_module
+
+    org = db_session.query(Organization).filter(Organization.id == uuid_module.UUID(headers["x-organization-id"])).first()
+    org.name = "Hôtel Le Test Suprême"
+    db_session.commit()
+
+    contact = client.post("/contacts", json={"phone": "+33612370010"}, headers=headers).json()
+    check_in = find_available_date(client, headers)
+
+    client.post(
+        "/pms/reservations",
+        json={
+            "contact_id": contact["id"],
+            "check_in": check_in.isoformat(),
+            "check_out": (check_in + timedelta(days=1)).isoformat(),
+            "room_type": "Chambre Standard",
+            "guest_email": "verif@example.com",
+        },
+        headers=headers,
+    )
+
+    mock_send.assert_called_once()
+    kwargs = mock_send.call_args.kwargs
+    assert "Hôtel Le Test Suprême" in kwargs["body"]
+    assert kwargs["html_body"] is not None
+    assert "Hôtel Le Test Suprême" in kwargs["html_body"]
+    assert "<html" in kwargs["html_body"]
+    assert "MOCK-" in kwargs["html_body"]  # numéro de confirmation présent dans le HTML

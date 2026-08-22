@@ -9,6 +9,11 @@ from abc import ABC, abstractmethod
 
 class EmailProvider(ABC):
     @abstractmethod
-    def send(self, to_email: str, subject: str, body: str) -> None:
-        """Envoie un email. Doit lever une exception si l'envoi échoue."""
+    def send(self, to_email: str, subject: str, body: str, html_body: str | None = None) -> None:
+        """
+        Envoie un email. `body` (texte brut) sert de version de secours pour
+        les clients mail qui ne supportent pas le HTML ; `html_body` est
+        utilisé si fourni pour une présentation soignée. Doit lever une
+        exception si l'envoi échoue.
+        """
         ...

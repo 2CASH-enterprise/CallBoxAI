@@ -23,9 +23,11 @@ from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.models.appointment import Appointment
 from app.models.contact import Contact
+from app.models.organization import Organization
 from app.providers.pms.mock import MockPMSProvider
 from app.providers.email.mock import MockEmailProvider
 from app.core.providers import get_messaging_provider
+from app.core.email_templates import reservation_confirmation_html, reservation_confirmation_text
 
 logger = logging.getLogger(__name__)
 
@@ -72,29 +74,34 @@ class ReservationOut(BaseModel):
     confirmation_sms_sent: bool = False
 
 
-def _send_confirmation_email(email: str, appointment: Appointment) -> bool:
+def _send_confirmation_email(email: str, appointment: Appointment, db: Session) -> bool:
     """
-    Envoie la confirmation de réservation par email (section 12/16).
-    Résilience (section 29) : un échec d'envoi ne doit JAMAIS faire échouer
-    la réservation elle-même — elle est déjà actée dans le PMS et le CRM.
+    Envoie la confirmation de réservation par email, avec une présentation
+    HTML soignée au nom de l'établissement (section 12/16). Résilience
+    (section 29) : un échec d'envoi ne doit JAMAIS faire échouer la
+    réservation elle-même — elle est déjà actée dans le PMS et le CRM.
     """
     try:
+        organization = db.query(Organization).filter(Organization.id == appointment.organization_id).first()
+        hotel_name = organization.name if organization else "Votre hôtel"
+
         provider = MockEmailProvider(host=settings.smtp_host, port=settings.smtp_port, from_email=settings.smtp_from_email)
         nights = (appointment.check_out_at - appointment.scheduled_at).days
-        body = (
-            f"Votre réservation est confirmée.\n\n"
-            f"Numéro de confirmation : {appointment.pms_confirmation_number}\n"
-            f"Type de chambre : {appointment.room_type}\n"
-            f"Arrivée : {appointment.scheduled_at:%d/%m/%Y}\n"
-            f"Départ : {appointment.check_out_at:%d/%m/%Y}\n"
-            f"Nombre de nuits : {nights}\n\n"
-            f"{appointment.notes or ''}\n\n"
-            f"À très bientôt !"
+
+        text_body = reservation_confirmation_text(
+            hotel_name, appointment.pms_confirmation_number, appointment.room_type,
+            appointment.scheduled_at, appointment.check_out_at, nights, appointment.notes,
         )
+        html_body = reservation_confirmation_html(
+            hotel_name, appointment.pms_confirmation_number, appointment.room_type,
+            appointment.scheduled_at, appointment.check_out_at, nights, appointment.notes,
+        )
+
         provider.send(
             to_email=email,
             subject=f"Confirmation de réservation — {appointment.pms_confirmation_number}",
-            body=body,
+            body=text_body,
+            html_body=html_body,
         )
         return True
     except Exception:
@@ -156,7 +163,7 @@ def _book_reservation(
     db.refresh(appointment)
 
     email_to_use = guest_email or contact.email
-    email_sent = _send_confirmation_email(email_to_use, appointment) if email_to_use else False
+    email_sent = _send_confirmation_email(email_to_use, appointment, db) if email_to_use else False
     sms_sent = _send_confirmation_sms(db, organization_id, contact.phone, appointment)
 
     return appointment, email_sent, sms_sent

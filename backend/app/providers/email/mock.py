@@ -18,12 +18,14 @@ class MockEmailProvider(EmailProvider):
         self._port = port
         self._from_email = from_email
 
-    def send(self, to_email: str, subject: str, body: str) -> None:
+    def send(self, to_email: str, subject: str, body: str, html_body: str | None = None) -> None:
         message = EmailMessage()
         message["From"] = self._from_email
         message["To"] = to_email
         message["Subject"] = subject
         message.set_content(body)
+        if html_body:
+            message.add_alternative(html_body, subtype="html")
 
         with smtplib.SMTP(self._host, self._port, timeout=5) as smtp:
             smtp.send_message(message)
