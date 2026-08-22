@@ -60,7 +60,8 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                 "Utilise ceci dès que le client demande une réservation ou une disponibilité."
             ),
             "url": f"{base}/pms/tools/availability?organization_id={organization_id}",
-            "speak_during_execution": True,
+            "method": "POST",
+            "speak_after_execution": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -79,7 +80,8 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                 "le type de chambre, et donné son nom et son numéro de téléphone."
             ),
             "url": f"{base}/pms/tools/reservations?organization_id={organization_id}",
-            "speak_during_execution": True,
+            "method": "POST",
+            "speak_after_execution": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -102,7 +104,8 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                 "ou annulation — le client rappelle souvent sans avoir son numéro de confirmation en tête."
             ),
             "url": f"{base}/pms/tools/find-reservation?organization_id={organization_id}",
-            "speak_during_execution": True,
+            "method": "POST",
+            "speak_after_execution": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -121,7 +124,8 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                 "Vérifie automatiquement la disponibilité des nouvelles dates avant de confirmer."
             ),
             "url": f"{base}/pms/tools/modify-reservation?organization_id={organization_id}",
-            "speak_during_execution": True,
+            "method": "POST",
+            "speak_after_execution": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -141,7 +145,8 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
                 "pour confirmer le bon numéro de réservation avec le client avant d'annuler."
             ),
             "url": f"{base}/pms/tools/cancel-reservation?organization_id={organization_id}",
-            "speak_during_execution": True,
+            "method": "POST",
+            "speak_after_execution": True,
             "parameters": {
                 "type": "object",
                 "properties": {

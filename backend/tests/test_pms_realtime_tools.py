@@ -211,3 +211,22 @@ def test_pms_tools_not_registered_without_public_base_url(client):
 
         _, kwargs = mock_create_llm.call_args
         assert kwargs.get("tools") is None
+
+
+def test_pms_tools_use_correct_retell_field_names():
+    """
+    Bug réel corrigé : "speak_during_execution" n'existe pas dans l'API
+    Retell (le bon nom est "speak_after_execution"), et "method" était
+    complètement absent — Retell acceptait la requête sans erreur mais
+    ignorait silencieusement les outils mal formés, aucun n'apparaissait
+    jamais dans leur dashboard malgré un provisionnement "réussi".
+    """
+    from app.providers.voice.retell_provider import _build_pms_tools
+
+    tools = _build_pms_tools("org-fake", "http://example.com")
+    assert len(tools) == 5
+    for tool in tools:
+        assert "speak_during_execution" not in tool
+        assert tool.get("speak_after_execution") is True
+        assert tool.get("method") == "POST"
+        assert tool["type"] == "custom"
