@@ -40,6 +40,8 @@ def _deterministic_availability(check_in: date, room_type: str, total_rooms: int
 
 class MockPMSProvider(PMSProvider):
     def check_availability(self, check_in: date, check_out: date, room_type: str | None = None) -> list[dict]:
+        if check_in < date.today():
+            raise ValueError("La date d'arrivée ne peut pas être dans le passé")
         nights = (check_out - check_in).days
         if nights <= 0:
             raise ValueError("La date de départ doit être après la date d'arrivée")
