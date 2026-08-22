@@ -120,6 +120,10 @@ export default function AgentsPage() {
         "- IMPORTANT : une fois l'email donné, le RÉPÉTER en l'épelant lettre par lettre (\"a comme Alice, " +
         "b comme Bertrand...\") et demander confirmation explicite avant de finaliser — les adresses email sont " +
         "difficiles à comprendre à l'oral, ne jamais l'utiliser sans cette confirmation ;\n" +
+        "- IMPORTANT : demande aussi le numéro de téléphone du client, et RÉPÈTE-le chiffre par chiffre " +
+        "(\"zéro, sept, huit, trois...\") pour confirmation explicite avant de finaliser — comme pour l'email, " +
+        "un numéro mal compris à l'oral est fréquent, ne jamais l'utiliser sans cette confirmation ; assure-toi " +
+        "qu'il comporte bien 10 chiffres avant de le considérer complet ;\n" +
         "- si le client veut modifier ou annuler une réservation existante, retrouve-la d'abord avec son numéro " +
         "de téléphone, confirme les détails avec lui avant toute modification ou annulation ;\n" +
         "- transférer à la réception uniquement pour une réclamation ou une demande urgente " +
