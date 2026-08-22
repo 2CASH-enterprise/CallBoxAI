@@ -229,4 +229,5 @@ def test_pms_tools_use_correct_retell_field_names():
         assert "speak_during_execution" not in tool
         assert tool.get("speak_after_execution") is True
         assert tool.get("method") == "POST"
+        assert tool.get("args_at_root") is True
         assert tool["type"] == "custom"

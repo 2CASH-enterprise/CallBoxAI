@@ -66,6 +66,7 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
             "url": f"{base}/pms/tools/availability?organization_id={organization_id}",
             "method": "POST",
             "speak_after_execution": True,
+            "args_at_root": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -86,6 +87,7 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
             "url": f"{base}/pms/tools/reservations?organization_id={organization_id}",
             "method": "POST",
             "speak_after_execution": True,
+            "args_at_root": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -110,6 +112,7 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
             "url": f"{base}/pms/tools/find-reservation?organization_id={organization_id}",
             "method": "POST",
             "speak_after_execution": True,
+            "args_at_root": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -130,6 +133,7 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
             "url": f"{base}/pms/tools/modify-reservation?organization_id={organization_id}",
             "method": "POST",
             "speak_after_execution": True,
+            "args_at_root": True,
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -151,6 +155,7 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
             "url": f"{base}/pms/tools/cancel-reservation?organization_id={organization_id}",
             "method": "POST",
             "speak_after_execution": True,
+            "args_at_root": True,
             "parameters": {
                 "type": "object",
                 "properties": {
