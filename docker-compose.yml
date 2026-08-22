@@ -59,6 +59,11 @@ services:
       # TELEPHONY_PROVIDER=twilio, EN PLUS des clés correspondantes.
       RETELL_API_KEY: ${RETELL_API_KEY:-}
       RETELL_AGENT_ID: ${RETELL_AGENT_ID:-}
+      # Oublié lors de l'introduction de ce réglage (section 16/30) : sans
+      # cette ligne, même présent dans .env, PUBLIC_BASE_URL n'atteignait
+      # JAMAIS le conteneur — c'est ce qui désactivait silencieusement les
+      # outils PMS en direct ET le webhook_url à chaque provisionnement.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
