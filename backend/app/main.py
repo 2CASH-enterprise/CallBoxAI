@@ -1,11 +1,22 @@
 """
 Point d'entrée FastAPI.
 """
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys, tickets, pms, sms, dashboard_today
+
+# Sans cette configuration explicite, les logger.info()/warning() de notre
+# propre code (voir app.api.routes.webhooks, app.api.routes.pms,
+# app.api.routes.agents...) sont SILENCIEUSEMENT IGNORÉS — seuls les
+# journaux d'accès automatiques d'uvicorn (les lignes "POST ... 200 OK")
+# apparaissent par défaut. Bug réel découvert lors du débogage en conditions
+# réelles : plusieurs journaux de diagnostic ajoutés n'ont jamais été
+# visibles avant cette correction.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 # Création des tables au démarrage (dev/tests uniquement ; en prod : migrations Alembic)
 Base.metadata.create_all(bind=engine)
