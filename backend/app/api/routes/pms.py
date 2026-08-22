@@ -227,15 +227,25 @@ def tool_check_availability(payload: ToolAvailabilityRequest, organization_id: u
     utilisateur), scopé par organization_id fixé une fois pour toutes au
     provisionnement de l'agent. Réponse pensée pour être lue par le LLM.
     """
+    logger.info(
+        "Outil check_room_availability appelé : org=%s check_in=%r check_out=%r room_type=%r",
+        organization_id, payload.check_in, payload.check_out, payload.room_type,
+    )
     try:
         check_in = date.fromisoformat(payload.check_in)
         check_out = date.fromisoformat(payload.check_out)
         offers = pms_provider.check_availability(check_in, check_out, payload.room_type)
     except ValueError as e:
+        logger.warning("check_room_availability : ValueError -> %s", e)
         return {"available": False, "error": str(e)}
+    except Exception:
+        logger.exception("check_room_availability : erreur inattendue")
+        return {"available": False, "error": "Erreur technique lors de la vérification."}
 
     if not offers:
+        logger.info("check_room_availability : aucune offre disponible pour cette demande")
         return {"available": False, "message": "Aucune chambre disponible pour ces dates."}
+    logger.info("check_room_availability : %d offre(s) trouvée(s)", len(offers))
     return {"available": True, "offers": offers}
 
 
@@ -252,10 +262,15 @@ def tool_create_reservation(
     à ce stade, seulement ce que dit l'appelant (section 18 : réutilisation
     par numéro, même logique que l'import CSV).
     """
+    logger.info(
+        "Outil create_room_reservation appelé : org=%s check_in=%r check_out=%r room_type=%r guest_phone=%r guest_email=%r",
+        organization_id, payload.check_in, payload.check_out, payload.room_type, payload.guest_phone, payload.guest_email,
+    )
     try:
         check_in = date.fromisoformat(payload.check_in)
         check_out = date.fromisoformat(payload.check_out)
     except ValueError:
+        logger.warning("create_room_reservation : format de date invalide (%r, %r)", payload.check_in, payload.check_out)
         return {"success": False, "error": "Format de date invalide (attendu AAAA-MM-JJ)."}
 
     contact = db.query(Contact).filter(
@@ -271,8 +286,10 @@ def tool_create_reservation(
             db, organization_id, contact, check_in, check_out, payload.room_type, payload.guest_email
         )
     except ValueError as e:
+        logger.warning("create_room_reservation : ValueError -> %s", e)
         return {"success": False, "error": str(e)}
 
+    logger.info("create_room_reservation : succès, confirmation=%s", appointment.pms_confirmation_number)
     return {
         "success": True,
         "confirmation_number": appointment.pms_confirmation_number,
