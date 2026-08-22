@@ -17,9 +17,13 @@ mais avec l'intégration Retell native, start_conversation() est celle qui
 déclenche réellement l'appel — make_call() de TelephonyProvider n'est alors
 pas utilisé en parallèle pour éviter de déclencher l'appel deux fois.
 """
+import logging
+
 import httpx
 
 from app.providers.voice.base import VoiceProvider
+
+logger = logging.getLogger(__name__)
 
 RETELL_API_BASE = "https://api.retellai.com"
 
@@ -172,9 +176,15 @@ class RetellProvider(VoiceProvider):
         payload = {"model": model, "general_prompt": general_prompt}
         if tools:
             payload["general_tools"] = tools
+        logger.info("create-retell-llm : envoi de %d outil(s) [%s]", len(tools or []), [t.get("name") for t in (tools or [])])
         response = self._client.post("/create-retell-llm", json=payload)
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(
+            "create-retell-llm : réponse llm_id=%s general_tools reçus=%s",
+            result.get("llm_id"), [t.get("name") for t in (result.get("general_tools") or [])],
+        )
+        return result
 
     def update_llm(self, llm_id: str, general_prompt: str, model: str, tools: list[dict] | None = None) -> dict:
         """Met à jour le LLM EXISTANT (prompt, outils) plutôt que d'en créer un nouveau — crée un brouillon (à publier)."""

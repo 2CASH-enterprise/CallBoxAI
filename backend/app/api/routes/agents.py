@@ -95,6 +95,13 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
     if settings.voice_provider != "retell" or not settings.retell_api_key:
         return
 
+    logger.info(
+        "Provisionnement Retell démarré : agent=%s pms_enabled=%s category=%s "
+        "public_base_url=%r existing_agent_id=%r existing_llm_id=%r",
+        agent.id, agent.pms_enabled, agent.category,
+        settings.public_base_url, agent.retell_agent_id, agent.retell_llm_id,
+    )
+
     try:
         from app.providers.voice.retell_provider import RetellProvider
 
@@ -113,6 +120,10 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
         )
         agent.retell_agent_id = result["agent_id"]
         agent.retell_llm_id = result["llm_id"]
+        logger.info(
+            "Provisionnement Retell terminé avec succès : agent=%s retell_agent_id=%s retell_llm_id=%s",
+            agent.id, result["agent_id"], result["llm_id"],
+        )
     except Exception:
         logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
 
