@@ -1,11 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Volume2, ExternalLink } from "lucide-react";
+import { Sparkles, Volume2, ExternalLink, Bot, Target, Headphones, BedDouble, PhoneIncoming, type LucideIcon } from "lucide-react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent } from "@/lib/api";
 import { RetellTestCallWidget } from "@/components/RetellTestCallWidget";
 import styles from "./agents.module.css";
+
+interface CategoryAvatar {
+  icon: LucideIcon;
+  bg: string;
+  color: string;
+  label: string;
+}
+
+// Avatar par métier de l'agent (section 19/41) — l'icône reflète ce que fait
+// l'agent, indépendamment du nom que le client choisit de lui donner
+// ("Jean", "Sarah"...). Cohérent avec le vocabulaire déjà adapté par
+// catégorie ailleurs dans le dashboard (Analytics, Tickets).
+const CATEGORY_AVATARS: Record<string, CategoryAvatar> = {
+  generique: { icon: Bot, bg: "var(--color-bg)", color: "var(--color-navy)", label: "Générique" },
+  prospection: { icon: Target, bg: "var(--color-violet-soft)", color: "var(--color-violet)", label: "Prospection" },
+  service_client: { icon: Headphones, bg: "var(--color-amber-soft)", color: "var(--color-amber)", label: "Service client" },
+  hotellerie: { icon: BedDouble, bg: "var(--color-signal-soft)", color: "var(--color-signal)", label: "Hôtellerie" },
+  telesecretariat: { icon: PhoneIncoming, bg: "var(--color-bg)", color: "var(--color-muted)", label: "Télésecrétariat" },
+};
+
+function getCategoryAvatar(category: string): CategoryAvatar {
+  return CATEGORY_AVATARS[category] || CATEGORY_AVATARS.generique;
+}
 
 const LANGUAGES = [
   { value: "fr", label: "Français" },
@@ -242,9 +265,37 @@ export default function AgentsPage() {
         </p>
       ) : (
         <div className={styles.grid}>
-          {agents.map((agent) => (
+          {agents.map((agent) => {
+            const avatar = getCategoryAvatar(agent.category);
+            const AvatarIcon = avatar.icon;
+            return (
             <div key={agent.id} className={styles.card}>
-              <div className={styles.cardName}>{agent.name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 40, height: 40, borderRadius: "50%", background: avatar.bg,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <AvatarIcon size={18} color={avatar.color} strokeWidth={2} />
+                  </div>
+                  {agent.retell_agent_id && (
+                    <div
+                      title="Agent provisionné et actif chez Retell"
+                      style={{
+                        position: "absolute", bottom: -1, right: -1, width: 11, height: 11,
+                        borderRadius: "50%", background: "var(--color-signal)",
+                        border: "2px solid var(--color-surface)",
+                      }}
+                    />
+                  )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div className={styles.cardName} style={{ marginBottom: 0 }}>{agent.name}</div>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)", fontFamily: "var(--font-mono)" }}>{avatar.label}</span>
+                </div>
+              </div>
               <div className={styles.cardObjective}>{agent.objective || "Objectif non défini"}</div>
               <span className={styles.langTag}>{agent.language}</span>
               {agent.transfer_enabled && (
@@ -305,7 +356,8 @@ export default function AgentsPage() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
