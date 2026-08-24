@@ -24,6 +24,10 @@ from app.models.call import Call
 from app.models.agent import Agent
 from app.models.contact import Contact
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
@@ -98,11 +102,24 @@ async def retell_webhook(request: Request, db: Session = Depends(get_db)):
     call_data = payload.get("call", {})
     provider_call_id = call_data.get("call_id")
 
+    logger.info(
+        "Webhook Retell reçu : event=%s call_id=%s agent_id=%s direction=%s from=%s",
+        payload.get("event"), provider_call_id, call_data.get("agent_id"),
+        call_data.get("direction"), call_data.get("from_number"),
+    )
+
     if not provider_call_id:
+        logger.warning("Webhook Retell ignoré : call_id manquant dans le payload")
         return {"status": "ignored", "reason": "call_id manquant"}
 
     call = _get_or_create_call(db, call_data, provider_call_id)
     if not call:
+        logger.warning(
+            "Webhook Retell ignoré : agent_id=%s introuvable parmi les agents CallBoxAI "
+            "(webhook_url probablement configuré sur un agent Retell orphelin/dupliqué, "
+            "ou provisionné avant la correction du webhook_url)",
+            call_data.get("agent_id"),
+        )
         return {"status": "ignored", "reason": "appel inconnu (agent Retell non reconnu)"}
 
     if "transcript" in call_data:
@@ -123,9 +140,12 @@ async def retell_webhook(request: Request, db: Session = Depends(get_db)):
         agent = db.query(Agent).filter(Agent.id == call.agent_id).first()
         if agent:
             from app.core.call_pipeline import apply_post_call_analytics
-            from app.providers.analytics.mock import MockAnalyticsProvider
+            # KeywordAnalyticsProvider (pas Mock) : ici, on traite un VRAI
+            # appel avec un VRAI transcript — l'analyse doit porter sur ce
+            # qui a réellement été dit, pas un tirage au sort (section 19).
+            from app.providers.analytics.keyword import KeywordAnalyticsProvider
 
-            apply_post_call_analytics(db, call.organization_id, agent, call, MockAnalyticsProvider(), call.contact_id)
+            apply_post_call_analytics(db, call.organization_id, agent, call, KeywordAnalyticsProvider(), call.contact_id)
         if call.status == "in_progress":
             call.status = "completed"
 
