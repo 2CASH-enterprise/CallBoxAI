@@ -141,6 +141,9 @@ export interface TicketBrief {
 }
 
 export interface TodayDashboard {
+  active_categories: string[];
+  show_hotel_section: boolean;
+  show_telecom_section: boolean;
   arrivals_today: ReservationBrief[];
   departures_today: ReservationBrief[];
   pending_messages: MessageBrief[];
@@ -149,6 +152,7 @@ export interface TodayDashboard {
     since: string;
     total_calls: number;
     reservations_made: number;
+    kyc_links_sent: number;
   };
 }
 

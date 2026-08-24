@@ -13,16 +13,23 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import require_organization_access
+from app.models.agent import Agent
 from app.models.appointment import Appointment
 from app.models.contact import Contact
 from app.models.message import Message
 from app.models.ticket import Ticket
 from app.models.call import Call
+from app.models.sms_log import SmsLog
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 # Fenêtre considérée comme "la nuit" pour le résumé d'activité (section 12).
 OVERNIGHT_WINDOW_HOURS = 12
+
+# Marqueur textuel utilisé dans le corps du SMS envoyé par l'outil KYC (voir
+# app.api.routes.telecom) — sert à compter les liens envoyés sans avoir à
+# lier SmsLog à un appel ou un agent (section 41).
+KYC_SMS_MARKER = "vérification d'identité"
 
 
 def _contact_label(contact: Contact | None) -> str:
@@ -62,9 +69,13 @@ class OvernightSummary(BaseModel):
     since: datetime
     total_calls: int
     reservations_made: int
+    kyc_links_sent: int
 
 
 class TodayDashboardOut(BaseModel):
+    active_categories: list[str]  # métiers réellement présents dans l'organisation (section 41)
+    show_hotel_section: bool  # affiche arrivées/départs uniquement si pertinent
+    show_telecom_section: bool  # affiche les liens KYC uniquement si pertinent
     arrivals_today: list[ReservationBrief]
     departures_today: list[ReservationBrief]
     pending_messages: list[MessageBrief]
@@ -82,41 +93,55 @@ def get_today_dashboard(
     today_end = today_start + timedelta(days=1)
     since = now - timedelta(hours=OVERNIGHT_WINDOW_HOURS)
 
-    # Arrivées / départs du jour (uniquement les réservations hôtelières,
-    # identifiées par room_type non nul — section 16).
-    reservations = (
-        db.query(Appointment)
-        .filter(Appointment.organization_id == organization_id, Appointment.room_type.isnot(None))
-        .all()
-    )
-    contacts_by_id = {c.id: c for c in db.query(Contact).filter(Contact.organization_id == organization_id).all()}
+    # Détecte les métiers réellement présents dans l'organisation (section
+    # 41) — évite d'afficher des sections/mots hôteliers ("réservations",
+    # "arrivées") pour une organisation purement télécom, et inversement.
+    active_categories = [
+        row[0] for row in db.query(Agent.category).filter(Agent.organization_id == organization_id).distinct().all()
+    ]
+    show_hotel_section = "hotellerie" in active_categories
+    show_telecom_section = "telecom" in active_categories
 
-    arrivals = [
-        ReservationBrief(
-            appointment_id=a.id,
-            contact_name=_contact_label(contacts_by_id.get(a.contact_id)),
-            contact_phone=contacts_by_id.get(a.contact_id).phone if contacts_by_id.get(a.contact_id) else "",
-            room_type=a.room_type,
-            check_in=a.scheduled_at,
-            check_out=a.check_out_at,
-            status=a.status,
+    # Arrivées / départs du jour (uniquement les réservations hôtelières,
+    # identifiées par room_type non nul — section 16) — calculées seulement
+    # si un agent hôtelier existe, pour ne pas faire tourner une requête
+    # inutile pour les organisations qui n'en ont pas besoin.
+    arrivals: list[ReservationBrief] = []
+    departures: list[ReservationBrief] = []
+    if show_hotel_section:
+        reservations = (
+            db.query(Appointment)
+            .filter(Appointment.organization_id == organization_id, Appointment.room_type.isnot(None))
+            .all()
         )
-        for a in reservations
-        if a.status != "cancelled" and today_start <= a.scheduled_at < today_end
-    ]
-    departures = [
-        ReservationBrief(
-            appointment_id=a.id,
-            contact_name=_contact_label(contacts_by_id.get(a.contact_id)),
-            contact_phone=contacts_by_id.get(a.contact_id).phone if contacts_by_id.get(a.contact_id) else "",
-            room_type=a.room_type,
-            check_in=a.scheduled_at,
-            check_out=a.check_out_at,
-            status=a.status,
-        )
-        for a in reservations
-        if a.status != "cancelled" and a.check_out_at and today_start <= a.check_out_at < today_end
-    ]
+        contacts_by_id = {c.id: c for c in db.query(Contact).filter(Contact.organization_id == organization_id).all()}
+
+        arrivals = [
+            ReservationBrief(
+                appointment_id=a.id,
+                contact_name=_contact_label(contacts_by_id.get(a.contact_id)),
+                contact_phone=contacts_by_id.get(a.contact_id).phone if contacts_by_id.get(a.contact_id) else "",
+                room_type=a.room_type,
+                check_in=a.scheduled_at,
+                check_out=a.check_out_at,
+                status=a.status,
+            )
+            for a in reservations
+            if a.status != "cancelled" and today_start <= a.scheduled_at < today_end
+        ]
+        departures = [
+            ReservationBrief(
+                appointment_id=a.id,
+                contact_name=_contact_label(contacts_by_id.get(a.contact_id)),
+                contact_phone=contacts_by_id.get(a.contact_id).phone if contacts_by_id.get(a.contact_id) else "",
+                room_type=a.room_type,
+                check_in=a.scheduled_at,
+                check_out=a.check_out_at,
+                status=a.status,
+            )
+            for a in reservations
+            if a.status != "cancelled" and a.check_out_at and today_start <= a.check_out_at < today_end
+        ]
 
     # Messages non encore traités (télé-secrétariat, section 12)
     pending_messages = (
@@ -151,8 +176,20 @@ def get_today_dashboard(
         )
         .count()
     )
+    overnight_kyc_links = (
+        db.query(SmsLog)
+        .filter(
+            SmsLog.organization_id == organization_id,
+            SmsLog.body.contains(KYC_SMS_MARKER),
+            SmsLog.created_at >= since,
+        )
+        .count()
+    )
 
     return TodayDashboardOut(
+        active_categories=active_categories,
+        show_hotel_section=show_hotel_section,
+        show_telecom_section=show_telecom_section,
         arrivals_today=arrivals,
         departures_today=departures,
         pending_messages=[
@@ -167,6 +204,7 @@ def get_today_dashboard(
             for t in open_tickets
         ],
         overnight_summary=OvernightSummary(
-            since=since, total_calls=overnight_calls, reservations_made=overnight_reservations
+            since=since, total_calls=overnight_calls, reservations_made=overnight_reservations,
+            kyc_links_sent=overnight_kyc_links,
         ),
     )

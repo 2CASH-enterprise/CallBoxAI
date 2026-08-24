@@ -56,51 +56,61 @@ export default function TodayPage() {
       <div className={styles.summaryBanner}>
         <div className={styles.summaryIcon}><Sunrise size={20} /></div>
         <div className={styles.summaryText}>
-          Cette nuit, l'agent a géré <strong>{data.overnight_summary.total_calls}</strong> appel(s), dont{" "}
-          <strong>{data.overnight_summary.reservations_made}</strong> réservation(s).
+          Cette nuit, l'agent a géré <strong>{data.overnight_summary.total_calls}</strong> appel(s)
+          {data.show_hotel_section && (
+            <> , dont <strong>{data.overnight_summary.reservations_made}</strong> réservation(s)</>
+          )}
+          {data.show_telecom_section && (
+            <> , dont <strong>{data.overnight_summary.kyc_links_sent}</strong> lien(s) KYC envoyé(s)</>
+          )}
+          .
         </div>
       </div>
 
       <div className={styles.grid}>
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <LogIn size={13} /> Arrivées du jour
-            <span className={styles.countBadge}>{data.arrivals_today.length}</span>
-          </div>
-          {data.arrivals_today.length === 0 ? (
-            <div className={styles.emptyState}>Aucune arrivée prévue aujourd'hui.</div>
-          ) : (
-            data.arrivals_today.map((r) => (
-              <div key={r.appointment_id} className={styles.row}>
-                <div className={styles.rowTop}>
-                  <span className={styles.rowName}>{r.contact_name}</span>
-                  <span className={styles.rowMeta}>{formatTime(r.check_in)}</span>
-                </div>
-                <div className={styles.rowContent}>{r.room_type} · {r.contact_phone}</div>
+        {data.show_hotel_section && (
+          <>
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <LogIn size={13} /> Arrivées du jour
+                <span className={styles.countBadge}>{data.arrivals_today.length}</span>
               </div>
-            ))
-          )}
-        </div>
+              {data.arrivals_today.length === 0 ? (
+                <div className={styles.emptyState}>Aucune arrivée prévue aujourd'hui.</div>
+              ) : (
+                data.arrivals_today.map((r) => (
+                  <div key={r.appointment_id} className={styles.row}>
+                    <div className={styles.rowTop}>
+                      <span className={styles.rowName}>{r.contact_name}</span>
+                      <span className={styles.rowMeta}>{formatTime(r.check_in)}</span>
+                    </div>
+                    <div className={styles.rowContent}>{r.room_type} · {r.contact_phone}</div>
+                  </div>
+                ))
+              )}
+            </div>
 
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <LogOut size={13} /> Départs du jour
-            <span className={styles.countBadge}>{data.departures_today.length}</span>
-          </div>
-          {data.departures_today.length === 0 ? (
-            <div className={styles.emptyState}>Aucun départ prévu aujourd'hui.</div>
-          ) : (
-            data.departures_today.map((r) => (
-              <div key={r.appointment_id} className={styles.row}>
-                <div className={styles.rowTop}>
-                  <span className={styles.rowName}>{r.contact_name}</span>
-                  <span className={styles.rowMeta}>{formatTime(r.check_out || r.check_in)}</span>
-                </div>
-                <div className={styles.rowContent}>{r.room_type} · {r.contact_phone}</div>
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <LogOut size={13} /> Départs du jour
+                <span className={styles.countBadge}>{data.departures_today.length}</span>
               </div>
-            ))
-          )}
-        </div>
+              {data.departures_today.length === 0 ? (
+                <div className={styles.emptyState}>Aucun départ prévu aujourd'hui.</div>
+              ) : (
+                data.departures_today.map((r) => (
+                  <div key={r.appointment_id} className={styles.row}>
+                    <div className={styles.rowTop}>
+                      <span className={styles.rowName}>{r.contact_name}</span>
+                      <span className={styles.rowMeta}>{formatTime(r.check_out || r.check_in)}</span>
+                    </div>
+                    <div className={styles.rowContent}>{r.room_type} · {r.contact_phone}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>

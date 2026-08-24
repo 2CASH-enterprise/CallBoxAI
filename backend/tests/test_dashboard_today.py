@@ -39,6 +39,7 @@ def test_empty_dashboard_has_sensible_defaults(client):
 
 def test_reservation_checking_in_today_appears_in_arrivals(client):
     headers = setup_org(client)
+    client.post("/agents", json={"name": "Agent Hôtel", "category": "hotellerie"}, headers=headers)
     contact = client.post("/contacts", json={"phone": "+33612370001"}, headers=headers).json()
 
     # Réservation avec arrivée aujourd'hui même : on force via l'API directe
@@ -75,6 +76,7 @@ def test_reservation_checking_in_today_appears_in_arrivals(client):
 
 def test_reservation_far_in_future_does_not_appear_today(client):
     headers = setup_org(client)
+    client.post("/agents", json={"name": "Agent Hôtel", "category": "hotellerie"}, headers=headers)
     contact = client.post("/contacts", json={"phone": "+33612370002"}, headers=headers).json()
     check_in = find_available_date_for(client, headers, target_days_ahead=20)
 
@@ -160,3 +162,61 @@ def test_dashboard_isolated_between_organizations(client):
     dashboard_b = client.get("/dashboard/today", headers=headers_b).json()
     assert dashboard_b["open_tickets"] == []
     assert dashboard_b["overnight_summary"]["total_calls"] == 0
+
+
+def test_telecom_only_org_does_not_show_hotel_sections(client):
+    """
+    Test central du correctif : une organisation purement télécom ne doit
+    jamais afficher "arrivées/départs" (concepts hôteliers sans rapport).
+    """
+    headers = setup_org(client)
+    client.post("/agents", json={"name": "Agent Télécom", "category": "telecom"}, headers=headers)
+
+    dashboard = client.get("/dashboard/today", headers=headers).json()
+    assert dashboard["show_hotel_section"] is False
+    assert dashboard["show_telecom_section"] is True
+    assert dashboard["arrivals_today"] == []
+    assert dashboard["departures_today"] == []
+
+
+def test_hotel_only_org_does_not_show_telecom_section(client):
+    headers = setup_org(client)
+    client.post("/agents", json={"name": "Agent Hôtel", "category": "hotellerie"}, headers=headers)
+
+    dashboard = client.get("/dashboard/today", headers=headers).json()
+    assert dashboard["show_hotel_section"] is True
+    assert dashboard["show_telecom_section"] is False
+
+
+def test_org_with_both_categories_shows_both_sections(client):
+    headers = setup_org(client)
+    client.post("/agents", json={"name": "Agent Hôtel", "category": "hotellerie"}, headers=headers)
+    client.post("/agents", json={"name": "Agent Télécom", "category": "telecom"}, headers=headers)
+
+    dashboard = client.get("/dashboard/today", headers=headers).json()
+    assert dashboard["show_hotel_section"] is True
+    assert dashboard["show_telecom_section"] is True
+    assert set(dashboard["active_categories"]) == {"hotellerie", "telecom"}
+
+
+def test_overnight_summary_counts_kyc_links_sent(client):
+    headers = setup_org(client)
+    org_id = headers["x-organization-id"]
+    agent = client.post("/agents", json={"name": "Agent Télécom", "category": "telecom", "kyc_enabled": True, "kyc_link_url": "https://kyc.test/x"}, headers=headers).json()
+
+    for i in range(3):
+        client.post(
+            f"/telecom/tools/send-kyc-link?organization_id={org_id}&agent_id={agent['id']}",
+            json={"guest_phone": f"+22177100000{i}"},
+        )
+
+    dashboard = client.get("/dashboard/today", headers=headers).json()
+    assert dashboard["overnight_summary"]["kyc_links_sent"] == 3
+
+
+def test_org_with_no_agents_shows_neither_section(client):
+    headers = setup_org(client)
+    dashboard = client.get("/dashboard/today", headers=headers).json()
+    assert dashboard["show_hotel_section"] is False
+    assert dashboard["show_telecom_section"] is False
+    assert dashboard["active_categories"] == []
