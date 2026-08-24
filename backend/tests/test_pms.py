@@ -165,7 +165,23 @@ def test_create_reservation_rejects_unknown_contact(client):
 def test_cancel_reservation_updates_appointment_status(client):
     headers = setup_org(client)
     contact = client.post("/contacts", json={"phone": "+33612345680"}, headers=headers).json()
-    check_in = date.today() + timedelta(days=3)
+
+    # Cherche une date réellement disponible plutôt qu'un décalage fixe non
+    # vérifié — bug réel corrigé : la disponibilité simulée dépend de la
+    # date du jour, un simple "aujourd'hui + 3 jours" peut tomber sur une
+    # date complète selon le jour d'exécution des tests (CI comprise).
+    check_in = None
+    for i in range(1, 60):
+        candidate = date.today() + timedelta(days=i)
+        offers = client.post(
+            "/pms/availability",
+            json={"check_in": candidate.isoformat(), "check_out": (candidate + timedelta(days=1)).isoformat(), "room_type": "Chambre Standard"},
+            headers=headers,
+        ).json()
+        if offers:
+            check_in = candidate
+            break
+    assert check_in is not None, "Aucune disponibilité trouvée sur 60 jours (improbable)"
 
     reservation = client.post(
         "/pms/reservations",
