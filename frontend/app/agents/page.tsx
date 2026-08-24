@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Volume2, ExternalLink, Bot, Target, Headphones, BedDouble, PhoneIncoming, type LucideIcon } from "lucide-react";
+import { Sparkles, Volume2, ExternalLink, Bot, Target, Headphones, BedDouble, PhoneIncoming, Smartphone, type LucideIcon } from "lucide-react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent } from "@/lib/api";
 import { RetellTestCallWidget } from "@/components/RetellTestCallWidget";
@@ -24,6 +24,7 @@ const CATEGORY_AVATARS: Record<string, CategoryAvatar> = {
   service_client: { icon: Headphones, bg: "var(--color-amber-soft)", color: "var(--color-amber)", label: "Service client" },
   hotellerie: { icon: BedDouble, bg: "var(--color-signal-soft)", color: "var(--color-signal)", label: "Hôtellerie" },
   telesecretariat: { icon: PhoneIncoming, bg: "var(--color-bg)", color: "var(--color-muted)", label: "Télésecrétariat" },
+  telecom: { icon: Smartphone, bg: "var(--color-red-soft)", color: "var(--color-red)", label: "Télécom" },
 };
 
 function getCategoryAvatar(category: string): CategoryAvatar {
@@ -48,7 +49,7 @@ export default function AgentsPage() {
   const [savingVoice, setSavingVoice] = useState(false);
   const [form, setForm] = useState({
     name: "", objective: "", system_prompt: "", language: "fr",
-    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false, category: "generique",
+    transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false, category: "generique", kyc_enabled: false, kyc_link_url: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -83,7 +84,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: false,
-      pms_enabled: false, category: "prospection",
+      pms_enabled: false, category: "prospection", kyc_enabled: false, kyc_link_url: "",
     });
     setModalOpen(true);
   }
@@ -111,7 +112,7 @@ export default function AgentsPage() {
       business_hours_start: "08:00",
       business_hours_end: "18:00",
       ticketing_enabled: true,
-      pms_enabled: false, category: "service_client",
+      pms_enabled: false, category: "service_client", kyc_enabled: false, kyc_link_url: "",
     });
     setModalOpen(true);
   }
@@ -160,7 +161,7 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: true,
-      pms_enabled: true, category: "hotellerie",
+      pms_enabled: true, category: "hotellerie", kyc_enabled: false, kyc_link_url: "",
     });
     setModalOpen(true);
   }
@@ -191,7 +192,41 @@ export default function AgentsPage() {
       business_hours_start: "",
       business_hours_end: "",
       ticketing_enabled: true,
-      pms_enabled: false, category: "telesecretariat",
+      pms_enabled: false, category: "telesecretariat", kyc_enabled: false, kyc_link_url: "",
+    });
+    setModalOpen(true);
+  }
+
+  function useTelecomTemplate() {
+    setForm({
+      name: "Agent Opérateur Télécom",
+      objective: "Qualifier, programmer l'activation, envoyer le lien KYC, et relancer jusqu'à conversion",
+      system_prompt:
+        "Tu es l'assistant commercial d'un opérateur de téléphonie mobile.\n\n" +
+        "Ton objectif suit ce parcours : qualifier le besoin du client (acquisition), déterminer s'il est " +
+        "prêt à activer une offre ou un service (conversion), envoyer le lien de vérification d'identité " +
+        "(KYC) une fois qu'il confirme vouloir avancer (activation).\n\n" +
+        "Tu dois toujours :\n" +
+        "- te présenter clairement et identifier rapidement le besoin du client (offre, forfait, mobile money...) ;\n" +
+        "- t'appuyer sur la base de connaissances pour les tarifs et conditions des offres ;\n" +
+        "- ne jamais inventer un tarif ou une condition que tu ne connais pas ;\n" +
+        "- dès que le client confirme vouloir activer, demander son numéro de téléphone (répète-le chiffre " +
+        "par chiffre pour confirmation), puis envoyer le lien KYC du partenaire par SMS ;\n" +
+        "- expliquer clairement que ce lien lui permet de finaliser sa vérification d'identité chez le partenaire ;\n" +
+        "- si le client hésite, proposer un rappel plutôt que d'insister ;\n" +
+        "- transférer à un conseiller humain pour toute réclamation ou situation que tu ne peux pas résoudre.",
+      language: "fr",
+      transfer_enabled: true,
+      transfer_number: "+221339000000",
+      transfer_instructions: "Réclamation, litige sur facturation, ou situation ne pouvant pas être résolue par l'agent.",
+      voice_id: "",
+      business_hours_start: "",
+      business_hours_end: "",
+      ticketing_enabled: true,
+      pms_enabled: false,
+      category: "telecom",
+      kyc_enabled: true,
+      kyc_link_url: "",
     });
     setModalOpen(true);
   }
@@ -204,7 +239,7 @@ export default function AgentsPage() {
       await api.createAgent(currentOrg.organization_id, form);
       setForm({
         name: "", objective: "", system_prompt: "", language: "fr",
-        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false, category: "generique",
+        transfer_enabled: false, transfer_number: "", transfer_instructions: "", voice_id: "", business_hours_start: "", business_hours_end: "", ticketing_enabled: false, pms_enabled: false, category: "generique", kyc_enabled: false, kyc_link_url: "",
       });
       setModalOpen(false);
       load();
@@ -250,6 +285,9 @@ export default function AgentsPage() {
           </button>
           <button className="btn btn-ghost" onClick={useStandardTemplate}>
             <Sparkles size={14} /> Modèle : Standard Téléphonique
+          </button>
+          <button className="btn btn-ghost" onClick={useTelecomTemplate}>
+            <Sparkles size={14} /> Modèle : Opérateur Télécom
           </button>
           <button className={styles.button} onClick={() => setModalOpen(true)}>
             + Créer un agent
@@ -481,6 +519,31 @@ export default function AgentsPage() {
                   Fonctionne uniquement sur un vrai appel (test vocal ou appel réel) — la simulation ne consulte
                   jamais le PMS. Nécessite PUBLIC_BASE_URL configuré sur le serveur.
                 </p>
+              )}
+            </div>
+
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.kyc_enabled}
+                  onChange={(e) => setForm({ ...form, kyc_enabled: e.target.checked })}
+                />
+                Activer le KYC (envoie le lien de vérification d'identité du partenaire par SMS en direct)
+              </label>
+              {form.kyc_enabled && (
+                <>
+                  <input
+                    placeholder="Lien KYC du partenaire (ex. https://kyc.orange.sn/verification)"
+                    value={form.kyc_link_url}
+                    onChange={(e) => setForm({ ...form, kyc_link_url: e.target.value })}
+                    style={{ marginTop: 8 }}
+                  />
+                  <p className={styles.voiceHint}>
+                    L'agent envoie ce lien par SMS dès que le client confirme vouloir activer — aucun document
+                    n'est demandé ni stocké ici, juste la transmission du lien déjà existant chez le partenaire.
+                  </p>
+                </>
               )}
             </div>
 

@@ -92,6 +92,8 @@ export interface Agent {
   business_hours_end: string | null;
   ticketing_enabled: boolean;
   pms_enabled: boolean;
+  kyc_enabled: boolean;
+  kyc_link_url: string | null;
   category: string;
 }
 
@@ -480,6 +482,8 @@ export const api = {
       business_hours_end?: string;
       ticketing_enabled?: boolean;
       pms_enabled?: boolean;
+      kyc_enabled?: boolean;
+      kyc_link_url?: string;
       category?: string;
     }
   ) =>
@@ -504,6 +508,8 @@ export const api = {
       business_hours_end: string;
       ticketing_enabled: boolean;
       pms_enabled: boolean;
+      kyc_enabled: boolean;
+      kyc_link_url: string;
       category: string;
     }>
   ) =>

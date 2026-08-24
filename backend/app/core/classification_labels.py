@@ -87,6 +87,30 @@ CATEGORY_LABELS: dict[str, dict[str, dict[str, str]]] = {
             "Message pris": "Message pris",
         },
     },
+    "telecom": {
+        "intent": {
+            "Demande d'information": "Demande d'information",
+            "Demande de prix": "Demande sur une offre",
+            "Prise de rendez-vous": "Activation programmée",
+            "Réclamation": "Réclamation",
+            "Support technique": "Support technique",
+            "Demande complexe": "Demande complexe",
+        },
+        "qualification": {
+            "Prospect chaud": "Prêt à activer",
+            "Prospect tiède": "À relancer",
+            "Pas intéressé": "Sans suite",
+            "À suivre par un humain": "À suivre par un humain",
+        },
+        "action_taken": {
+            "Rendez-vous pris": "Activation programmée",
+            "Rappel programmé": "Relance programmée",
+            "Information transmise": "Information transmise",
+            "Aucune action": "Aucune action",
+            "Transfert vers opérateur": "Transfert vers opérateur",
+            "Message pris": "Message pris",
+        },
+    },
 }
 
 

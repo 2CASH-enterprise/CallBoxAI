@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
-from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys, tickets, pms, sms, dashboard_today
+from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys, tickets, pms, sms, dashboard_today, telecom
 
 # Sans cette configuration explicite, les logger.info()/warning() de notre
 # propre code (voir app.api.routes.webhooks, app.api.routes.pms,
@@ -54,3 +54,4 @@ app.include_router(tickets.router)
 app.include_router(pms.router)
 app.include_router(sms.router)
 app.include_router(dashboard_today.router)
+app.include_router(telecom.router)

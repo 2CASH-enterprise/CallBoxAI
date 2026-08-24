@@ -33,6 +33,8 @@ class AgentCreate(BaseModel):
     business_hours_end: str | None = None
     ticketing_enabled: bool = False
     pms_enabled: bool = False
+    kyc_enabled: bool = False
+    kyc_link_url: str | None = None
     category: str = "generique"
 
 
@@ -49,6 +51,8 @@ class AgentUpdate(BaseModel):
     business_hours_end: str | None = None
     ticketing_enabled: bool | None = None
     pms_enabled: bool | None = None
+    kyc_enabled: bool | None = None
+    kyc_link_url: str | None = None
     category: str | None = None
 
 
@@ -67,6 +71,8 @@ class AgentOut(BaseModel):
     business_hours_end: str | None
     ticketing_enabled: bool
     pms_enabled: bool
+    kyc_enabled: bool
+    kyc_link_url: str | None
     category: str
 
     class Config:
@@ -113,6 +119,8 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
             model=settings.retell_default_llm_model,
             voice_id=agent.voice_id or settings.retell_default_voice_id,
             pms_enabled=agent.pms_enabled,
+            kyc_enabled=agent.kyc_enabled,
+            callboxai_agent_id=str(agent.id),
             organization_id=str(agent.organization_id),
             existing_agent_id=agent.retell_agent_id,
             existing_llm_id=agent.retell_llm_id,
@@ -171,7 +179,7 @@ def update_agent(
         raise HTTPException(status_code=404, detail="Agent introuvable pour cette organisation")
 
     updates = payload.model_dump(exclude_unset=True)
-    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled"))
+    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled", "kyc_enabled", "kyc_link_url"))
 
     for field, value in updates.items():
         setattr(agent, field, value)

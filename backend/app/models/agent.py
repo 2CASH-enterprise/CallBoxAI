@@ -62,6 +62,12 @@ class Agent(Base):
     # seulement depuis le dashboard. Sans intérêt pour un agent non-hôtelier.
     pms_enabled = Column(Boolean, default=False)
 
+    # KYC simplifié (section 41) : plutôt que de construire un système de
+    # vérification de documents, on envoie simplement au client le lien du
+    # KYC déjà existant chez le partenaire (opérateur télécom, banque...).
+    kyc_enabled = Column(Boolean, default=False)
+    kyc_link_url = Column(String, nullable=True)
+
     # Métier de l'agent (section 19/41) : adapte le VOCABULAIRE affiché de la
     # classification automatique ("Prospect tiède" n'a aucun sens pour un
     # client d'hôtel) — voir app.core.classification_labels. La logique

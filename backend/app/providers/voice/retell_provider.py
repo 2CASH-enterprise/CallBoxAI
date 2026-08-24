@@ -167,6 +167,38 @@ def _build_pms_tools(organization_id: str, public_base_url: str) -> list[dict]:
     ]
 
 
+def _build_kyc_tools(organization_id: str, agent_id: str, public_base_url: str) -> list[dict]:
+    """
+    Construit l'outil "function calling" (section 41) que l'agent peut
+    appeler EN DIRECT pendant l'appel pour envoyer le lien KYC du partenaire
+    par SMS. agent_id est nécessaire ici (contrairement aux outils PMS) car
+    le lien KYC est configuré PAR AGENT (chaque opérateur a le sien).
+    """
+    base = public_base_url.rstrip("/")
+    return [
+        {
+            "type": "custom",
+            "name": "send_kyc_link",
+            "description": (
+                "Envoie par SMS le lien de vérification d'identité (KYC) du partenaire au client. "
+                "Utilise ceci dès que le client confirme vouloir activer son compte/service."
+            ),
+            "url": f"{base}/telecom/tools/send-kyc-link?organization_id={organization_id}&agent_id={agent_id}",
+            "method": "POST",
+            "speak_after_execution": True,
+            "args_at_root": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guest_phone": {"type": "string", "description": "Numéro de téléphone du client, format international"},
+                    "guest_name": {"type": "string", "description": "Nom du client (optionnel)"},
+                },
+                "required": ["guest_phone"],
+            },
+        },
+    ]
+
+
 class RetellProvider(VoiceProvider):
     def __init__(self, api_key: str, agent_id: str):
         self._agent_id = agent_id
@@ -267,6 +299,8 @@ class RetellProvider(VoiceProvider):
         model: str,
         voice_id: str,
         pms_enabled: bool = False,
+        kyc_enabled: bool = False,
+        callboxai_agent_id: str | None = None,
         organization_id: str | None = None,
         public_base_url: str | None = None,
         existing_agent_id: str | None = None,
@@ -290,13 +324,18 @@ class RetellProvider(VoiceProvider):
 
         Si pms_enabled est vrai ET qu'une organization_id/public_base_url
         sont fournies, l'agent reçoit les outils de consultation/réservation
-        PMS EN DIRECT pendant l'appel (section 16). Sans ces informations,
-        l'agent se crée quand même, simplement sans ces outils — résilience
-        (section 29), pas de blocage sur une configuration manquante.
+        PMS EN DIRECT pendant l'appel (section 16). Si kyc_enabled est vrai
+        (avec callboxai_agent_id fourni), l'agent reçoit l'outil d'envoi du
+        lien KYC (section 41). Sans ces informations, l'agent se crée quand
+        même, simplement sans ces outils — résilience (section 29), pas de
+        blocage sur une configuration manquante.
         """
-        tools = None
+        tools: list[dict] = []
         if pms_enabled and organization_id and public_base_url:
-            tools = _build_pms_tools(organization_id, public_base_url)
+            tools += _build_pms_tools(organization_id, public_base_url)
+        if kyc_enabled and organization_id and callboxai_agent_id and public_base_url:
+            tools += _build_kyc_tools(organization_id, callboxai_agent_id, public_base_url)
+        tools = tools or None
 
         webhook_url = f"{public_base_url.rstrip('/')}/webhooks/retell" if public_base_url else None
         prompt = system_prompt or f"Tu es {name}, un assistant vocal utile."
