@@ -455,6 +455,12 @@ export interface Me {
 }
 
 export const api = {
+  requestDemoCall: (phoneNumber: string) =>
+    request<{ success: boolean; message: string }>("/public/demo-call", {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({ phone_number: phoneNumber }),
+    }),
   register: (data: { email: string; password: string; full_name: string; organization_name: string; organization_country?: string }) =>
     request<{ access_token: string }>("/auth/register", {
       method: "POST",

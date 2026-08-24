@@ -5,7 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { useAuth } from "@/lib/AuthContext";
 
-const PUBLIC_PATHS = ["/login", "/register"];
+const PUBLIC_PATHS = ["/", "/login", "/register"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -46,6 +46,15 @@ class Settings(BaseSettings):
     smtp_host: str = "mailhog"
     smtp_port: int = 1025
     smtp_from_email: str = "reservations@callboxai.local"
+
+    # Appel de démo public depuis la landing page (section 1) : agent_id
+    # Retell de l'agent "CallBoxAI Démo" (créé et provisionné une fois via
+    # le dashboard normal, comme n'importe quel autre agent), et numéro
+    # Retell depuis lequel l'appel est passé. Vides par défaut : sans ces
+    # deux valeurs, la démo publique est simplement désactivée plutôt que
+    # de planter (résilience, section 29).
+    demo_agent_retell_id: str = ""
+    demo_from_number: str = ""
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""
