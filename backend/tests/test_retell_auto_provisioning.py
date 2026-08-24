@@ -109,7 +109,7 @@ def test_retell_provider_provision_agent_orchestrates_correctly(mock_post):
     assert agent_call[1]["json"]["voice_id"] == "retell-Cimo"
 
     publish_call = mock_post.call_args_list[2]
-    assert publish_call[0][0] == "/publish-agent/agent_fake456"
+    assert publish_call[0][0] == "/publish-agent-version/agent_fake456"
 
 
 @patch("httpx.Client.post")

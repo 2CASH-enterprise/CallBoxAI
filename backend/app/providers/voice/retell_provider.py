@@ -278,8 +278,14 @@ class RetellProvider(VoiceProvider):
         return response.json()
 
     def publish_agent(self, agent_id: str) -> dict:
-        """Publie la dernière version de l'agent pour la rendre effectivement appelable."""
-        response = self._client.post(f"/publish-agent/{agent_id}")
+        """
+        Publie la dernière version de l'agent pour la rendre effectivement
+        appelable. Utilise /publish-agent-version/{agent_id} — l'ancien
+        /publish-agent/{agent_id} est annoncé comme déprécié par Retell
+        (notice reçue le 24/08/2026, retrait à venir), migré ici avant que
+        ça ne casse en production.
+        """
+        response = self._client.post(f"/publish-agent-version/{agent_id}")
         response.raise_for_status()
         # Certaines réponses de succès de cet endpoint arrivent sans corps
         # (ou avec un corps non-JSON) — on ne bloque pas là-dessus, la
