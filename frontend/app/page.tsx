@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { DemoCallWidget } from "@/components/DemoCallWidget";
+import { CallWaveIllustration } from "@/components/CallWaveIllustration";
+import { DashboardPreview } from "@/components/DashboardPreview";
 import styles from "./landing.module.css";
 
 const USE_CASES = [
@@ -30,7 +32,7 @@ export default function LandingPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/logo.png" alt="CallBoxAI" className={styles.logo} />
+        <img src="/brand/logo-header.png" alt="CallBoxAI" className={styles.logo} />
         <div className={styles.headerActions}>
           <Link href="/login" className={styles.headerLink}>Connexion</Link>
           <Link href="/register" className={styles.headerCta}>Créer mon compte</Link>
@@ -79,6 +81,20 @@ export default function LandingPage() {
         </div>
       </div>
 
+      <section className={styles.availabilitySection}>
+        <div className={styles.availabilityText}>
+          <p className={styles.sectionKicker}>Toujours joignable</p>
+          <h2 className={styles.sectionTitle}>Le téléphone sonne. Quelqu'un répond. Toujours.</h2>
+          <p className={styles.availabilityBody}>
+            Nuit, week-end, jour férié, ligne occupée — l'agent décroche pendant que vous êtes ailleurs,
+            et vous transmet ce qui compte vraiment.
+          </p>
+        </div>
+        <div className={styles.availabilityVisual}>
+          <CallWaveIllustration />
+        </div>
+      </section>
+
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <p className={styles.sectionKicker}>Comment ça marche</p>
@@ -101,6 +117,14 @@ export default function LandingPage() {
             <div className={styles.stepText}>Chaque appel est transcrit et remonté dans votre tableau de bord, jour et nuit.</div>
           </div>
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <p className={styles.sectionKicker}>Le tableau de bord</p>
+          <h2 className={styles.sectionTitle}>Vos agents, en un coup d'œil</h2>
+        </div>
+        <DashboardPreview />
       </section>
 
       <section className={styles.section} id="cas-usage">

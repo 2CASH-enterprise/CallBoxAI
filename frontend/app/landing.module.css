@@ -14,7 +14,7 @@
   margin: 0 auto;
 }
 .logo {
-  height: 34px;
+  height: 40px;
   width: auto;
 }
 .headerActions { display: flex; gap: 4px; align-items: center; }
@@ -117,6 +117,21 @@
 
 /* ---------- Preview visual (remplace la grosse boîte d'appel) ---------- */
 .previewWrap { max-width: 880px; margin: 0 auto; padding: 0 56px 96px; }
+
+/* ---------- Section "Toujours joignable" (illustration) ---------- */
+.availabilitySection {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 56px 96px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 56px;
+  align-items: center;
+}
+.availabilityText { max-width: 460px; }
+.availabilityBody { color: var(--color-muted); font-size: 15.5px; line-height: 1.65; margin-top: 18px; }
+.availabilityVisual { display: flex; justify-content: center; }
+
 .preview {
   background: var(--color-navy);
   border-radius: 20px;
@@ -246,6 +261,8 @@
   .header { padding: 18px 24px; }
   .hero { padding: 48px 24px 40px; }
   .previewWrap { padding: 0 24px 64px; }
+  .availabilitySection { grid-template-columns: 1fr; padding: 0 24px 64px; text-align: center; }
+  .availabilityText { max-width: none; margin: 0 auto; }
   .section { padding: 48px 24px; }
   .steps { grid-template-columns: 1fr; }
   .step { border-right: none; border-bottom: 1px solid var(--color-line); padding: 24px 0; }
