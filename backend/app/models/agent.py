@@ -68,6 +68,13 @@ class Agent(Base):
     kyc_enabled = Column(Boolean, default=False)
     kyc_link_url = Column(String, nullable=True)
 
+    # Traçabilité (section 41) : de quel modèle cet agent a été créé au
+    # départ — PAS un lien vivant, juste une étiquette. Modifier le modèle
+    # ne modifie jamais cet agent automatiquement (isolation multi-tenant) ;
+    # sert uniquement à afficher "Récupérer la dernière version du modèle"
+    # côté Super Admin, pour comparer/rafraîchir manuellement si besoin.
+    source_template = Column(String, nullable=True)
+
     # Métier de l'agent (section 19/41) : adapte le VOCABULAIRE affiché de la
     # classification automatique ("Prospect tiède" n'a aucun sens pour un
     # client d'hôtel) — voir app.core.classification_labels. La logique

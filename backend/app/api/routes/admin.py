@@ -22,7 +22,7 @@ from app.models.agent import Agent
 from app.models.call import Call
 from app.models.user import User
 from app.models.agent_request import AgentRequest, VALID_STATUSES as AGENT_REQUEST_STATUSES
-from app.api.routes.agents import AgentCreate
+from app.api.routes.agents import AgentCreate, AgentUpdate
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -232,6 +232,10 @@ def fulfill_agent_request(
     if request.status == "completed":
         raise HTTPException(status_code=400, detail="Cette demande a déjà été traitée")
 
+    # source_template fixé depuis la demande d'origine, pas depuis le
+    # formulaire — c'est le use_case réellement choisi par le client qui
+    # fait foi, même si l'admin a ajusté d'autres champs avant validation.
+    payload.source_template = request.use_case
     agent = _create_agent_for_organization(db, request.organization_id, payload)
 
     request.status = "completed"
@@ -244,4 +248,87 @@ def fulfill_agent_request(
         id=request.id, organization_id=request.organization_id, organization_name=org.name if org else "?",
         use_case=request.use_case, objective=request.objective, status=request.status,
         admin_notes=request.admin_notes, created_agent_id=request.created_agent_id, created_at=request.created_at,
+    )
+
+
+# ---------- Gestion des agents existants (section 41) ----------
+# Le Super Admin doit pouvoir corriger un agent après sa création (prompt,
+# voix...) — la modification classique (PATCH /agents/{id}) est réservée
+# aux membres de l'organisation concernée, ce que le Super Admin n'est pas.
+
+class AdminAgentOut(BaseModel):
+    id: uuid.UUID
+    organization_id: uuid.UUID
+    organization_name: str
+    name: str
+    objective: str | None
+    language: str
+    system_prompt: str | None
+    transfer_enabled: bool
+    transfer_number: str | None
+    transfer_instructions: str | None
+    voice_id: str | None
+    business_hours_start: str | None
+    business_hours_end: str | None
+    ticketing_enabled: bool
+    pms_enabled: bool
+    kyc_enabled: bool
+    kyc_link_url: str | None
+    category: str
+    source_template: str | None
+    retell_agent_id: str | None
+
+
+@router.get("/agents", response_model=list[AdminAgentOut])
+def list_all_agents(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """Tous les agents, toutes organisations confondues."""
+    rows = db.query(Agent, Organization).join(Organization, Agent.organization_id == Organization.id).all()
+    return [
+        AdminAgentOut(
+            id=a.id, organization_id=a.organization_id, organization_name=org.name,
+            name=a.name, objective=a.objective, language=a.language, system_prompt=a.system_prompt,
+            transfer_enabled=a.transfer_enabled, transfer_number=a.transfer_number,
+            transfer_instructions=a.transfer_instructions, voice_id=a.voice_id,
+            business_hours_start=a.business_hours_start, business_hours_end=a.business_hours_end,
+            ticketing_enabled=a.ticketing_enabled, pms_enabled=a.pms_enabled,
+            kyc_enabled=a.kyc_enabled, kyc_link_url=a.kyc_link_url, category=a.category,
+            source_template=a.source_template, retell_agent_id=a.retell_agent_id,
+        )
+        for a, org in rows
+    ]
+
+
+@router.patch("/agents/{agent_id}", response_model=AdminAgentOut)
+def admin_update_agent(
+    agent_id: uuid.UUID,
+    payload: AgentUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """
+    Modifie n'importe quel agent, peu importe son organisation. Ne modifie
+    QUE cet agent précis (jamais les autres, même issus du même modèle
+    d'origine) — voir Agent.source_template pour la traçabilité, sans lien
+    vivant vers le modèle.
+    """
+    from app.api.routes.agents import _update_agent
+
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent introuvable")
+
+    updated = _update_agent(db, agent, payload)
+    org = db.query(Organization).filter(Organization.id == updated.organization_id).first()
+    return AdminAgentOut(
+        id=updated.id, organization_id=updated.organization_id, organization_name=org.name if org else "?",
+        name=updated.name, objective=updated.objective, language=updated.language, system_prompt=updated.system_prompt,
+        transfer_enabled=updated.transfer_enabled, transfer_number=updated.transfer_number,
+        transfer_instructions=updated.transfer_instructions, voice_id=updated.voice_id,
+        business_hours_start=updated.business_hours_start, business_hours_end=updated.business_hours_end,
+        ticketing_enabled=updated.ticketing_enabled, pms_enabled=updated.pms_enabled,
+        kyc_enabled=updated.kyc_enabled, kyc_link_url=updated.kyc_link_url, category=updated.category,
+        source_template=updated.source_template, retell_agent_id=updated.retell_agent_id,
     )

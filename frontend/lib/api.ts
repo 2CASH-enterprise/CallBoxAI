@@ -95,6 +95,7 @@ export interface Agent {
   name: string;
   objective: string | null;
   language: string;
+  system_prompt: string | null;
   transfer_enabled: boolean;
   transfer_number: string | null;
   transfer_instructions: string | null;
@@ -107,6 +108,11 @@ export interface Agent {
   kyc_enabled: boolean;
   kyc_link_url: string | null;
   category: string;
+  source_template: string | null;
+}
+
+export interface AdminAgent extends Agent {
+  organization_name: string;
 }
 
 export interface Ticket {
@@ -518,6 +524,22 @@ export const api = {
   ) =>
     request<AgentRequest>(`/admin/agent-requests/${requestId}/fulfill`, {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  listAllAgents: () => request<AdminAgent[]>("/admin/agents"),
+  adminUpdateAgent: (
+    agentId: string,
+    data: Partial<{
+      name: string; objective: string; language: string; system_prompt: string;
+      transfer_enabled: boolean; transfer_number: string; transfer_instructions: string;
+      voice_id: string; business_hours_start: string; business_hours_end: string;
+      ticketing_enabled: boolean; pms_enabled: boolean; kyc_enabled: boolean; kyc_link_url: string;
+      category: string;
+    }>
+  ) =>
+    request<AdminAgent>(`/admin/agents/${agentId}`, {
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 

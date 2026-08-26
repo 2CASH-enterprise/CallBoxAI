@@ -135,3 +135,86 @@ def test_client_cannot_fulfill_requests(client):
 
     response = client.post(f"/admin/agent-requests/{req['id']}/fulfill", json={"name": "Agent"}, headers=headers)
     assert response.status_code == 403
+
+
+def test_fulfilled_agent_has_source_template_traced(client):
+    """Le modèle d'origine doit être mémorisé automatiquement, sans que l'admin ait à le préciser."""
+    headers = setup_org(client)
+    admin_headers = get_super_admin_headers(client)
+    req = client.post("/agent-requests", json={"use_case": "telecom", "objective": "Test"}, headers=headers).json()
+
+    client.post(f"/admin/agent-requests/{req['id']}/fulfill", json={"name": "Agent Télécom"}, headers=admin_headers)
+
+    agents = client.get("/agents", headers=headers).json()
+    assert agents[0]["source_template"] == "telecom"
+
+
+def test_super_admin_can_list_all_agents_across_organizations(client):
+    from tests.conftest import register_user
+    token_a, org_id_a = register_user(client, org_name="Organisation A")
+    headers_a = {**auth_headers(token_a), "x-organization-id": org_id_a}
+    token_b, org_id_b = register_user(client, org_name="Organisation B")
+    headers_b = {**auth_headers(token_b), "x-organization-id": org_id_b}
+    admin_headers = get_super_admin_headers(client)
+    req_a = client.post("/agent-requests", json={"use_case": "hotellerie", "objective": "Test A"}, headers=headers_a).json()
+    req_b = client.post("/agent-requests", json={"use_case": "telecom", "objective": "Test B"}, headers=headers_b).json()
+    client.post(f"/admin/agent-requests/{req_a['id']}/fulfill", json={"name": "Agent A"}, headers=admin_headers)
+    client.post(f"/admin/agent-requests/{req_b['id']}/fulfill", json={"name": "Agent B"}, headers=admin_headers)
+
+    all_agents = client.get("/admin/agents", headers=admin_headers).json()
+    assert len(all_agents) == 2
+    organization_names = {a["organization_name"] for a in all_agents}
+    assert organization_names == {"Organisation A", "Organisation B"}
+
+
+def test_client_cannot_access_admin_agents_endpoint(client):
+    headers = setup_org(client)
+    response = client.get("/admin/agents", headers=headers)
+    assert response.status_code == 403
+
+
+def test_super_admin_can_update_agent_prompt_for_any_organization(client):
+    """Test central : le Super Admin modifie un agent d'une organisation dont il n'est pas membre."""
+    headers = setup_org(client)
+    admin_headers = get_super_admin_headers(client)
+    req = client.post("/agent-requests", json={"use_case": "hotellerie", "objective": "Test"}, headers=headers).json()
+    result = client.post(f"/admin/agent-requests/{req['id']}/fulfill", json={"name": "Agent Hôtel", "system_prompt": "Ancien prompt"}, headers=admin_headers).json()
+    agent_id = result["created_agent_id"]
+
+    response = client.patch(f"/admin/agents/{agent_id}", json={"system_prompt": "Nouveau prompt amélioré"}, headers=admin_headers)
+    assert response.status_code == 200
+    assert response.json()["system_prompt"] == "Nouveau prompt amélioré"
+
+    # Confirmé aussi côté client
+    agents = client.get("/agents", headers=headers).json()
+    assert agents[0]["system_prompt"] == "Nouveau prompt amélioré"
+
+
+def test_admin_updating_one_agent_does_not_affect_other_organizations_agents(client):
+    """
+    Test central de non-fuite : modifier l'agent de l'organisation A ne doit
+    JAMAIS toucher un agent de même catégorie chez l'organisation B.
+    """
+    headers_a = setup_org(client)
+    headers_b = setup_org(client)
+    admin_headers = get_super_admin_headers(client)
+
+    req_a = client.post("/agent-requests", json={"use_case": "telecom", "objective": "A"}, headers=headers_a).json()
+    req_b = client.post("/agent-requests", json={"use_case": "telecom", "objective": "B"}, headers=headers_b).json()
+    result_a = client.post(f"/admin/agent-requests/{req_a['id']}/fulfill", json={"name": "Agent A", "system_prompt": "Prompt original"}, headers=admin_headers).json()
+    client.post(f"/admin/agent-requests/{req_b['id']}/fulfill", json={"name": "Agent B", "system_prompt": "Prompt original"}, headers=admin_headers)
+
+    client.patch(f"/admin/agents/{result_a['created_agent_id']}", json={"system_prompt": "Modifié uniquement pour A"}, headers=admin_headers)
+
+    agent_b = client.get("/agents", headers=headers_b).json()[0]
+    assert agent_b["system_prompt"] == "Prompt original"  # jamais touché
+
+
+def test_client_cannot_use_admin_update_endpoint(client):
+    headers = setup_org(client)
+    admin_headers = get_super_admin_headers(client)
+    req = client.post("/agent-requests", json={"use_case": "hotellerie", "objective": "Test"}, headers=headers).json()
+    result = client.post(f"/admin/agent-requests/{req['id']}/fulfill", json={"name": "Agent"}, headers=admin_headers).json()
+
+    response = client.patch(f"/admin/agents/{result['created_agent_id']}", json={"system_prompt": "Piraté"}, headers=headers)
+    assert response.status_code == 403

@@ -38,6 +38,7 @@ class AgentCreate(BaseModel):
     kyc_enabled: bool = False
     kyc_link_url: str | None = None
     category: str = "generique"
+    source_template: str | None = None
 
 
 class AgentUpdate(BaseModel):
@@ -56,6 +57,7 @@ class AgentUpdate(BaseModel):
     kyc_enabled: bool | None = None
     kyc_link_url: str | None = None
     category: str | None = None
+    source_template: str | None = None
 
 
 class AgentOut(BaseModel):
@@ -64,6 +66,7 @@ class AgentOut(BaseModel):
     name: str
     objective: str | None = None
     language: str
+    system_prompt: str | None = None
     transfer_enabled: bool
     transfer_number: str | None
     transfer_instructions: str | None
@@ -76,6 +79,7 @@ class AgentOut(BaseModel):
     kyc_enabled: bool
     kyc_link_url: str | None
     category: str
+    source_template: str | None
 
     class Config:
         from_attributes = True
@@ -173,6 +177,28 @@ def list_agents(
     return db.query(Agent).filter(Agent.organization_id == organization_id).all()
 
 
+def _update_agent(db: Session, agent: Agent, payload: AgentUpdate) -> Agent:
+    """
+    Logique de mise à jour partagée entre le client (PATCH /agents/{id},
+    restreint à sa propre organisation) et le Super Admin (PATCH
+    /admin/agents/{id}, n'importe quelle organisation — section 41 : les
+    agents sont créés pour le compte du client, il faut pouvoir les corriger
+    après coup, notamment le prompt).
+    """
+    updates = payload.model_dump(exclude_unset=True)
+    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled", "kyc_enabled", "kyc_link_url"))
+
+    for field, value in updates.items():
+        setattr(agent, field, value)
+
+    if needs_reprovision:
+        _provision_retell_agent_if_configured(agent)
+
+    db.commit()
+    db.refresh(agent)
+    return agent
+
+
 @router.patch("/agents/{agent_id}", response_model=AgentOut)
 def update_agent(
     agent_id: uuid.UUID,
@@ -188,19 +214,7 @@ def update_agent(
     agent = db.query(Agent).filter(Agent.id == agent_id, Agent.organization_id == organization_id).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent introuvable pour cette organisation")
-
-    updates = payload.model_dump(exclude_unset=True)
-    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled", "kyc_enabled", "kyc_link_url"))
-
-    for field, value in updates.items():
-        setattr(agent, field, value)
-
-    if needs_reprovision:
-        _provision_retell_agent_if_configured(agent)
-
-    db.commit()
-    db.refresh(agent)
-    return agent
+    return _update_agent(db, agent, payload)
 
 
 @router.post("/agents/{agent_id}/test-call", response_model=WebCallOut)
