@@ -1,0 +1,65 @@
+.header { margin-bottom: 20px; }
+.title { font-family: var(--font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+
+.filterBar { display: flex; gap: 8px; margin-bottom: 20px; }
+.filterButton {
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+.filterButtonActive { background: var(--color-navy); color: white; border-color: var(--color-navy); }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+.cardTop { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 12px; }
+.orgName { font-weight: 600; font-size: 14px; }
+.useCase { font-size: 11.5px; font-family: var(--font-mono); color: var(--color-muted); }
+.objective { font-size: 13.5px; color: var(--color-ink); margin-bottom: 12px; line-height: 1.5; }
+
+.statusTag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.actions { display: flex; gap: 8px; }
+
+.formOverlay {
+  position: fixed; inset: 0; background: rgba(13,18,32,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 20;
+  padding: 24px;
+}
+.formModal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 560px;
+  max-width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.formModal h2 { font-family: var(--font-display); font-size: 19px; margin: 0; }
+.formModal label { font-size: 12.5px; color: var(--color-muted); display: block; margin-bottom: 4px; }
+.formModal input, .formModal textarea, .formModal select {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 13.5px;
+}
+.formActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }

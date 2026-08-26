@@ -11,9 +11,11 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import require_organization_access
+from app.core.security import require_organization_access, get_current_user
 from app.core.config import settings
 from app.models.agent import Agent
+from app.models.agent_request import AgentRequest, VALID_STATUSES as AGENT_REQUEST_STATUSES
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -136,12 +138,13 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
         logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
 
 
-@router.post("/agents", response_model=AgentOut)
-def create_agent(
-    payload: AgentCreate,
-    db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(require_organization_access),
-):
+def _create_agent_for_organization(db: Session, organization_id: uuid.UUID, payload: AgentCreate) -> Agent:
+    """
+    Logique de création partagée entre le client (POST /agents, restreint à
+    sa propre organisation) et le Super Admin (POST /admin/agent-requests/
+    {id}/fulfill, pour n'importe quelle organisation — section 41 : demande
+    de création plutôt que self-service, pour mieux calibrer le prompt).
+    """
     agent = Agent(organization_id=organization_id, **payload.model_dump())
     db.add(agent)
     db.commit()
@@ -150,8 +153,16 @@ def create_agent(
     _provision_retell_agent_if_configured(agent)
     db.commit()
     db.refresh(agent)
-
     return agent
+
+
+@router.post("/agents", response_model=AgentOut)
+def create_agent(
+    payload: AgentCreate,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    return _create_agent_for_organization(db, organization_id, payload)
 
 
 @router.get("/agents", response_model=list[AgentOut])
@@ -246,3 +257,59 @@ def create_test_web_call(
     db.commit()
 
     return WebCallOut(access_token=result["access_token"], call_id=result["call_id"])
+
+
+# ---------- Demandes de création d'agent (section 41) ----------
+# Le client ne crée plus lui-même son agent (voir décision produit) : il
+# décrit son besoin, le Super Admin le configure et le crée pour lui — voir
+# app.api.routes.admin pour le traitement côté Super Admin.
+
+class AgentRequestCreate(BaseModel):
+    use_case: str
+    objective: str
+
+
+class AgentRequestOut(BaseModel):
+    id: uuid.UUID
+    organization_id: uuid.UUID
+    use_case: str
+    objective: str
+    status: str
+    admin_notes: str | None
+    created_agent_id: uuid.UUID | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.post("/agent-requests", response_model=AgentRequestOut)
+def create_agent_request(
+    payload: AgentRequestCreate,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+    current_user: User = Depends(get_current_user),
+):
+    request = AgentRequest(
+        organization_id=organization_id,
+        requested_by_user_id=current_user.id,
+        use_case=payload.use_case,
+        objective=payload.objective,
+    )
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+@router.get("/agent-requests", response_model=list[AgentRequestOut])
+def list_agent_requests(
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    return (
+        db.query(AgentRequest)
+        .filter(AgentRequest.organization_id == organization_id)
+        .order_by(AgentRequest.created_at.desc())
+        .all()
+    )

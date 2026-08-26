@@ -77,6 +77,18 @@ export interface Organization {
   country: string | null;
 }
 
+export interface AgentRequest {
+  id: string;
+  organization_id: string;
+  organization_name?: string;
+  use_case: string;
+  objective: string;
+  status: string;
+  admin_notes: string | null;
+  created_agent_id: string | null;
+  created_at: string;
+}
+
 export interface Agent {
   id: string;
   organization_id: string;
@@ -477,6 +489,38 @@ export const api = {
 
   listAgents: (organizationId: string) =>
     request<Agent[]>("/agents", { organizationId }),
+
+  createAgentRequest: (organizationId: string, data: { use_case: string; objective: string }) =>
+    request<AgentRequest>("/agent-requests", {
+      method: "POST",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  listAgentRequests: (organizationId: string) =>
+    request<AgentRequest[]>("/agent-requests", { organizationId }),
+
+  listAllAgentRequests: (status?: string) =>
+    request<AgentRequest[]>(`/admin/agent-requests${status ? `?status=${status}` : ""}`),
+  updateAgentRequestStatus: (requestId: string, data: { status: string; admin_notes?: string }) =>
+    request<AgentRequest>(`/admin/agent-requests/${requestId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  fulfillAgentRequest: (
+    requestId: string,
+    data: {
+      name: string; objective?: string; language?: string; system_prompt?: string;
+      transfer_enabled?: boolean; transfer_number?: string; transfer_instructions?: string;
+      voice_id?: string; business_hours_start?: string; business_hours_end?: string;
+      ticketing_enabled?: boolean; pms_enabled?: boolean; kyc_enabled?: boolean; kyc_link_url?: string;
+      category?: string;
+    }
+  ) =>
+    request<AgentRequest>(`/admin/agent-requests/${requestId}/fulfill`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   createAgent: (
     organizationId: string,
     data: {
