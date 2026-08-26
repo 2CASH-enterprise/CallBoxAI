@@ -35,6 +35,19 @@ function getCategoryAvatar(category: string): CategoryAvatar {
   return CATEGORY_AVATARS[category] || CATEGORY_AVATARS.generique;
 }
 
+// Avatars personnages (choix stable par agent — basé sur son id, pas un
+// vrai tirage aléatoire à chaque rendu, sinon l'avatar changerait à chaque
+// rafraîchissement de la page).
+const AVATAR_IMAGES = ["/avatars/avatar-1.jpg", "/avatars/avatar-2.jpg"];
+
+function getAgentAvatarImage(agentId: string): string {
+  let hash = 0;
+  for (let i = 0; i < agentId.length; i++) {
+    hash = (hash * 31 + agentId.charCodeAt(i)) % 1000;
+  }
+  return AVATAR_IMAGES[hash % AVATAR_IMAGES.length];
+}
+
 const REQUEST_STATUS_LABEL: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   pending: { label: "En attente", icon: Clock, color: "var(--color-amber)" },
   in_progress: { label: "En cours de traitement", icon: Clock, color: "var(--color-violet)" },
@@ -169,18 +182,19 @@ export default function AgentsPage() {
             <div className={styles.grid}>
               {agents.map((agent) => {
                 const avatar = getCategoryAvatar(agent.category);
-                const AvatarIcon = avatar.icon;
+                const avatarImage = getAgentAvatarImage(agent.id);
                 return (
                   <div key={agent.id} className={styles.card}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         <div
                           style={{
-                            width: 40, height: 40, borderRadius: "50%", background: avatar.bg,
-                            display: "flex", alignItems: "center", justifyContent: "center",
+                            width: 40, height: 40, borderRadius: "50%", overflow: "hidden",
+                            border: "1px solid var(--color-line)", flexShrink: 0,
                           }}
                         >
-                          <AvatarIcon size={18} color={avatar.color} strokeWidth={2} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={avatarImage} alt={agent.name} width={40} height={40} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
                         </div>
                         {agent.retell_agent_id && (
                           <div
