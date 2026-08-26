@@ -64,6 +64,10 @@ services:
       # JAMAIS le conteneur — c'est ce qui désactivait silencieusement les
       # outils PMS en direct ET le webhook_url à chaque provisionnement.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Même bug que PUBLIC_BASE_URL à l'origine : oublié à l'introduction
+      # de l'appel de démo public (section 1), corrigé directement cette fois.
+      DEMO_AGENT_RETELL_ID: ${DEMO_AGENT_RETELL_ID:-}
+      DEMO_FROM_NUMBER: ${DEMO_FROM_NUMBER:-}
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
