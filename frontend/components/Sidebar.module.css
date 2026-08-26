@@ -83,6 +83,17 @@
   color: var(--brand-color, var(--color-signal));
 }
 
+.navLinkDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.navLinkDisabled:hover {
+  background: none;
+  transform: none;
+}
+
 .navLabel {
   font-family: var(--font-mono);
   font-size: 10.5px;
