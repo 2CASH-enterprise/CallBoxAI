@@ -73,8 +73,6 @@ export function Sidebar() {
     api.listAgents(currentOrg.organization_id).then(setAgents).catch(() => setAgents([]));
   }, [currentOrg]);
 
-  const hasActiveAgent = agents.length > 0;
-
   // Un utilisateur "client" (membre d'au moins une organisation) voit les
   // menus opérationnels. Un Super Admin ou un Distributeur voit "Pilotage".
   // Section 6.1 du cahier des charges : rôles plateforme vs rôles par entreprise.
@@ -87,23 +85,21 @@ export function Sidebar() {
       : []),
   ];
 
-  const renderLinks = (items: NavItem[], gateByAgents: boolean) =>
+  const renderLinks = (items: NavItem[]) =>
     items.map(({ href, label, icon: Icon, isRelevant }) => {
       const active = pathname?.startsWith(href);
-      // Grisé (section 41) : soit aucun agent du tout n'existe encore, soit
-      // aucun agent existant n'a la capacité pertinente pour ce lien.
-      const isDisabled = gateByAgents && (!hasActiveAgent || (isRelevant ? !isRelevant(agents) : false));
+      // Grisé (section 41) UNIQUEMENT si ce lien a un prédicat de capacité
+      // ET qu'aucun agent existant ne le satisfait. Les liens sans
+      // prédicat (Agents IA en particulier — il faut bien pouvoir y accéder
+      // pour demander son tout premier agent !) ne sont jamais grisés.
+      const isDisabled = isRelevant ? !isRelevant(agents) : false;
 
       if (isDisabled) {
         return (
           <span
             key={href}
             className={`${styles.navLink} ${styles.navLinkDisabled}`}
-            title={
-              !hasActiveAgent
-                ? "Activez un agent pour débloquer cette page"
-                : "Aucun agent actif n'utilise cette fonctionnalité"
-            }
+            title="Aucun agent actif n'utilise cette fonctionnalité"
           >
             <Icon size={16} strokeWidth={2} className={styles.navIcon} />
             <span>{label}</span>
@@ -134,14 +130,14 @@ export function Sidebar() {
       {showClientLinks && (
         <>
           <div className={styles.navLabel}>Opérations</div>
-          <nav className={styles.nav}>{renderLinks(clientLinks, true)}</nav>
+          <nav className={styles.nav}>{renderLinks(clientLinks)}</nav>
         </>
       )}
 
       {pilotageLinks.length > 0 && (
         <>
           <div className={styles.navLabel}>Pilotage</div>
-          <nav className={styles.nav}>{renderLinks(pilotageLinks, false)}</nav>
+          <nav className={styles.nav}>{renderLinks(pilotageLinks)}</nav>
         </>
       )}
 
