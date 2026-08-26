@@ -29,7 +29,8 @@ export default function LandingPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <span className={styles.logo}>CallBoxAI</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/logo.png" alt="CallBoxAI" className={styles.logo} />
         <div className={styles.headerActions}>
           <Link href="/login" className={styles.headerLink}>Connexion</Link>
           <Link href="/register" className={styles.headerCta}>Créer mon compte</Link>

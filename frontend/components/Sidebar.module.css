@@ -25,6 +25,23 @@
   line-height: 1;
 }
 
+.brandMarkChip {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brandMarkIcon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
 .brandLogo {
   height: 24px;
   max-width: 150px;

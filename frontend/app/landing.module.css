@@ -14,11 +14,8 @@
   margin: 0 auto;
 }
 .logo {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: -0.01em;
-  color: var(--color-navy);
+  height: 34px;
+  width: auto;
 }
 .headerActions { display: flex; gap: 4px; align-items: center; }
 .headerLink {

@@ -122,7 +122,10 @@ export function Sidebar() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={branding.logoUrl} alt={branding.name} className={styles.brandLogo} />
         ) : (
-          <span className={styles.brandMark}>●</span>
+          <span className={styles.brandMarkChip}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo-icon.png" alt="" className={styles.brandMarkIcon} />
+          </span>
         )}
         <span className={styles.brandName}>{branding.name}</span>
       </div>
