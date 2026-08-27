@@ -140,7 +140,7 @@ export default function KnowledgePage() {
           Votre site web et vos réseaux sociaux sont automatiquement explorés et tenus à jour (resynchronisation
           toutes les 24h), pour une meilleure connaissance de votre entreprise — jamais obligatoire.
         </p>
-        <form onSubmit={handleSaveSources} style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
+        <form onSubmit={handleSaveSources} className={styles.sourcesForm}>
           <input
             placeholder="Site web (ex. https://mon-entreprise.com)"
             value={websiteUrl}
@@ -152,7 +152,7 @@ export default function KnowledgePage() {
             value={socialMediaUrls}
             onChange={(e) => setSocialMediaUrls(e.target.value)}
           />
-          <button type="submit" className="btn btn-primary" disabled={savingSources} style={{ alignSelf: "flex-start" }}>
+          <button type="submit" className="btn btn-primary" disabled={savingSources}>
             {savingSources ? "Enregistrement…" : "Enregistrer"}
           </button>
         </form>

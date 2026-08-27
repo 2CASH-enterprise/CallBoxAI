@@ -88,6 +88,33 @@
   font-size: 13px;
 }
 
+.sourcesForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+}
+
+.sourcesForm input, .sourcesForm textarea {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--color-surface);
+  resize: vertical;
+}
+
+.sourcesForm input:focus, .sourcesForm textarea:focus {
+  outline: none;
+  border-color: var(--color-signal);
+  box-shadow: 0 0 0 3px var(--color-signal-soft);
+}
+
+.sourcesForm button {
+  align-self: flex-start;
+}
+
 .searchBar button {
   background: var(--color-signal);
   color: white;
