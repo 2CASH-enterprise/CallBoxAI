@@ -262,6 +262,34 @@ def _build_meeting_tool(organization_id: str, agent_id: str, public_base_url: st
     }
 
 
+def _build_ticket_lookup_tool(organization_id: str, public_base_url: str) -> dict:
+    """
+    Outil de consultation de ticket (section 12) — permet à l'agent de
+    répondre à un client qui rappelle pour connaître l'état d'une demande
+    déjà ouverte, plutôt que de n'avoir aucune visibilité sur l'historique.
+    """
+    base = public_base_url.rstrip("/")
+    return {
+        "type": "custom",
+        "name": "lookup_tickets",
+        "description": (
+            "Consulte les tickets/demandes déjà ouverts par ce client. Utilise ceci si le client "
+            "demande où en est une demande précédente, ou mentionne avoir déjà contacté le service."
+        ),
+        "url": f"{base}/tickets/tools/lookup?organization_id={organization_id}",
+        "method": "POST",
+        "speak_after_execution": True,
+        "args_at_root": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "guest_phone": {"type": "string", "description": "Numéro de téléphone du client, format international"},
+            },
+            "required": ["guest_phone"],
+        },
+    }
+
+
 class RetellProvider(VoiceProvider):
     def __init__(self, api_key: str, agent_id: str):
         self._agent_id = agent_id
@@ -413,6 +441,7 @@ class RetellProvider(VoiceProvider):
         model: str,
         voice_id: str,
         pms_enabled: bool = False,
+        ticketing_enabled: bool = False,
         kyc_enabled: bool = False,
         whatsapp_enabled: bool = False,
         meeting_booking_enabled: bool = False,
@@ -460,6 +489,8 @@ class RetellProvider(VoiceProvider):
             tools.append(_build_whatsapp_tool(organization_id, public_base_url))
         if meeting_booking_enabled and organization_id and callboxai_agent_id and public_base_url:
             tools.append(_build_meeting_tool(organization_id, callboxai_agent_id, public_base_url))
+        if ticketing_enabled and organization_id and public_base_url:
+            tools.append(_build_ticket_lookup_tool(organization_id, public_base_url))
         tools = tools or None
 
         webhook_url = f"{public_base_url.rstrip('/')}/webhooks/retell" if public_base_url else None

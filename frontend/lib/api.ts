@@ -129,6 +129,7 @@ export interface Ticket {
   status: string;
   description: string | null;
   resolution_notes: string | null;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -757,7 +758,7 @@ export const api = {
   updateTicket: (
     organizationId: string,
     ticketId: string,
-    data: Partial<{ status: string; priority: string; resolution_notes: string }>
+    data: Partial<{ status: string; priority: string; resolution_notes: string; assigned_to: string }>
   ) =>
     request<Ticket>(`/tickets/${ticketId}`, {
       method: "PATCH",

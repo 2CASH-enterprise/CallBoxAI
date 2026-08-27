@@ -135,6 +135,7 @@ def _provision_retell_agent_if_configured(agent: Agent, db: Session) -> None:
             model=settings.retell_default_llm_model,
             voice_id=agent.voice_id or settings.retell_default_voice_id,
             pms_enabled=agent.pms_enabled,
+            ticketing_enabled=agent.ticketing_enabled,
             kyc_enabled=agent.kyc_enabled,
             whatsapp_enabled=agent.whatsapp_enabled,
             meeting_booking_enabled=agent.meeting_booking_enabled,
@@ -199,7 +200,7 @@ def _update_agent(db: Session, agent: Agent, payload: AgentUpdate) -> Agent:
     après coup, notamment le prompt).
     """
     updates = payload.model_dump(exclude_unset=True)
-    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled", "kyc_enabled", "kyc_link_url", "whatsapp_enabled", "meeting_booking_enabled"))
+    needs_reprovision = any(field in updates for field in ("voice_id", "system_prompt", "language", "name", "pms_enabled", "kyc_enabled", "kyc_link_url", "whatsapp_enabled", "meeting_booking_enabled", "ticketing_enabled"))
 
     for field, value in updates.items():
         setattr(agent, field, value)

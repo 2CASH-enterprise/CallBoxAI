@@ -87,8 +87,28 @@ def is_within_business_hours(agent: Agent, now: datetime | None = None) -> bool:
     return current >= start or current <= end  # fenêtre à cheval sur minuit
 
 
-def _priority_from_sentiment(sentiment: str | None) -> str:
-    """Traduit le sentiment détecté en priorité de ticket (section 12)."""
+# Mots-clés indiquant une urgence réelle (section 12) — un client calme qui
+# signale un vrai problème grave ne doit pas recevoir une priorité basse
+# simplement parce que son ton était neutre ; le contenu prime sur le ton.
+URGENT_KEYWORDS = [
+    "débité deux fois", "prélevé deux fois", "double prélèvement", "double facturation",
+    "ne fonctionne plus", "en panne", "plus d'accès", "bloqué", "piraté", "fraude",
+    "danger", "sécurité", "urgent", "immédiatement", "fuite d'eau", "incendie",
+]
+
+
+def _priority_from_content(transcript: str | None, summary: str | None, sentiment: str | None) -> str:
+    """
+    Détermine la priorité du ticket à partir du CONTENU réel de l'appel en
+    priorité (mots-clés d'urgence), et seulement à défaut à partir du ton
+    détecté (section 12) — le ton seul est un mauvais indicateur d'urgence
+    réelle : un client calme peut signaler un problème grave, un client
+    agacé peut se plaindre d'un détail mineur.
+    """
+    text = f"{transcript or ''} {summary or ''}".lower()
+    if any(keyword in text for keyword in URGENT_KEYWORDS):
+        return "urgente"
+
     if sentiment == "Négatif":
         return "haute"
     if sentiment == "Neutre":
@@ -262,7 +282,7 @@ def apply_post_call_analytics(
                 contact_id=contact_id,
                 subject=f"Appel du {call.started_at:%d/%m/%Y %H:%M}" if call.started_at else "Appel",
                 category=display["intent"],
-                priority=_priority_from_sentiment(classification["sentiment"]),
+                priority=_priority_from_content(call.transcript, call.summary, classification["sentiment"]),
                 status="ouvert",
                 description=call.summary,
             )

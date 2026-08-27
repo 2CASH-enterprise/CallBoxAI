@@ -30,6 +30,7 @@ class Ticket(Base):
     status = Column(String, default="ouvert")
     description = Column(Text, nullable=True)
     resolution_notes = Column(Text, nullable=True)
+    assigned_to = Column(String, nullable=True)  # nom/email de la personne qui traite le ticket
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
