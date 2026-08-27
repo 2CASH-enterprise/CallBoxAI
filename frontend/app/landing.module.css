@@ -14,8 +14,10 @@
   margin: 0 auto;
 }
 .logo {
-  height: 40px;
+  height: 26px;
   width: auto;
+  display: block;
+  object-fit: contain;
 }
 .headerActions { display: flex; gap: 4px; align-items: center; }
 .headerLink {
