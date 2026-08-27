@@ -73,6 +73,7 @@ class CallOut(BaseModel):
     sentiment: str | None
     score: int | None
     action_taken: str | None
+    duration_seconds: int
 
     class Config:
         from_attributes = True

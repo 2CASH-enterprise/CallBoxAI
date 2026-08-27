@@ -131,6 +131,18 @@ async def retell_webhook(request: Request, db: Session = Depends(get_db)):
     event = payload.get("event")
     if event == "call_ended" and call.status == "in_progress":
         call.status = "completed"
+        # Durée réelle de l'appel (section 40 — facturation à la minute) :
+        # Retell fournit soit duration_ms directement, soit les horodatages
+        # de début/fin (en ms) — jamais utilisée jusqu'ici, la colonne
+        # restait toujours à zéro malgré la donnée déjà transmise.
+        duration_ms = call_data.get("duration_ms")
+        if duration_ms is None:
+            start_ts = call_data.get("start_timestamp")
+            end_ts = call_data.get("end_timestamp")
+            if start_ts is not None and end_ts is not None:
+                duration_ms = end_ts - start_ts
+        if duration_ms is not None and duration_ms >= 0:
+            call.duration_seconds = round(duration_ms / 1000)
 
     # call_analyzed arrive en dernier (après call_ended), une fois le
     # résumé/transcript final disponibles — c'est le bon moment pour
