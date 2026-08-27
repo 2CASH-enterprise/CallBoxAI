@@ -24,7 +24,7 @@ interface NavItem {
   isRelevant?: (agents: Agent[]) => boolean;
 }
 
-const SALES_CATEGORIES = ["prospection", "telecom"];
+const SALES_CATEGORIES = ["prospection", "telecom", "fidelisation"];
 
 const clientLinks: NavItem[] = [
   { href: "/today", label: "Aujourd'hui", icon: Sunrise },

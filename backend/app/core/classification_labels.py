@@ -111,6 +111,30 @@ CATEGORY_LABELS: dict[str, dict[str, dict[str, str]]] = {
             "Message pris": "Message pris",
         },
     },
+    "fidelisation": {
+        "intent": {
+            "Demande d'information": "Demande d'information",
+            "Demande de prix": "Demande sur une offre",
+            "Prise de rendez-vous": "Intérêt confirmé",
+            "Réclamation": "Réclamation",
+            "Support technique": "Support technique",
+            "Demande complexe": "Demande complexe",
+        },
+        "qualification": {
+            "Prospect chaud": "Intéressé",
+            "Prospect tiède": "À recontacter",
+            "Pas intéressé": "Pas intéressé",
+            "À suivre par un humain": "À suivre par un humain",
+        },
+        "action_taken": {
+            "Rendez-vous pris": "Intérêt confirmé",
+            "Rappel programmé": "Relance programmée",
+            "Information transmise": "Information transmise",
+            "Aucune action": "Aucune action",
+            "Transfert vers opérateur": "Transfert vers opérateur",
+            "Message pris": "Message pris",
+        },
+    },
 }
 
 

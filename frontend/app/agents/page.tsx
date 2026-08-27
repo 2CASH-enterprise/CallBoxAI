@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Volume2, ExternalLink, Bot, Target, Headphones, BedDouble, PhoneIncoming,
-  Smartphone, Lock, Clock, CheckCircle2, XCircle, type LucideIcon,
+  Smartphone, Lock, Clock, CheckCircle2, XCircle, Repeat, type LucideIcon,
 } from "lucide-react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent, AgentRequest } from "@/lib/api";
@@ -29,6 +29,7 @@ const CATEGORY_AVATARS: Record<string, CategoryAvatar> = {
   hotellerie: { icon: BedDouble, bg: "var(--color-signal-soft)", color: "var(--color-signal)", label: "Hôtellerie" },
   telesecretariat: { icon: PhoneIncoming, bg: "var(--color-bg)", color: "var(--color-muted)", label: "Télésecrétariat" },
   telecom: { icon: Smartphone, bg: "var(--color-red-soft)", color: "var(--color-red)", label: "Télécom" },
+  fidelisation: { icon: Repeat, bg: "var(--color-violet-soft)", color: "var(--color-violet)", label: "Fidélisation & Upsell" },
 };
 
 function getCategoryAvatar(category: string): CategoryAvatar {
