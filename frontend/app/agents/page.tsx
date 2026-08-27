@@ -41,12 +41,20 @@ function getCategoryAvatar(category: string): CategoryAvatar {
 // rafraîchissement de la page).
 const AVATAR_IMAGES = ["/avatars/avatar-1.jpg", "/avatars/avatar-2.jpg"];
 
-function getAgentAvatarImage(agentId: string): string {
+function getAvatarImageForKey(key: string): string {
   let hash = 0;
-  for (let i = 0; i < agentId.length; i++) {
-    hash = (hash * 31 + agentId.charCodeAt(i)) % 1000;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) % 1000;
   }
   return AVATAR_IMAGES[hash % AVATAR_IMAGES.length];
+}
+
+// Priorité au modèle d'origine (source_template) plutôt qu'à l'id réel de
+// l'agent : c'est ce qui permet à l'avatar choisi dans "Demander un agent"
+// de RÉAPPARAÎTRE à l'identique une fois l'agent créé par le Super Admin —
+// sinon, avant création, aucun id réel n'existe encore pour prévisualiser.
+function getAgentAvatarImage(agent: { id: string; source_template: string | null }): string {
+  return getAvatarImageForKey(agent.source_template || agent.id);
 }
 
 const REQUEST_STATUS_LABEL: Record<string, { label: string; icon: LucideIcon; color: string }> = {
@@ -183,7 +191,7 @@ export default function AgentsPage() {
             <div className={styles.grid}>
               {agents.map((agent) => {
                 const avatar = getCategoryAvatar(agent.category);
-                const avatarImage = getAgentAvatarImage(agent.id);
+                const avatarImage = getAgentAvatarImage(agent);
                 return (
                   <div key={agent.id} className={styles.card}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -266,7 +274,7 @@ export default function AgentsPage() {
 
       {requestModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setRequestModalOpen(false)}>
-          <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitRequest}>
+          <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitRequest} style={{ width: 560 }}>
             <h2>Demander un agent</h2>
             <p className={styles.voiceHint} style={{ marginBottom: 4 }}>
               Décrivez votre besoin — notre équipe configure et crée l'agent pour vous, en s'appuyant sur nos
@@ -276,12 +284,17 @@ export default function AgentsPage() {
             <div>
               <label>Métier le plus proche de votre besoin</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                {AGENT_TEMPLATES.map((t) => (
+                {[...AGENT_TEMPLATES].sort((a, b) => Number(!!a.locked) - Number(!!b.locked)).map((t) => {
+                  const previewAvatar = getAvatarImageForKey(t.key);
+                  const categoryColor = getCategoryAvatar(t.fields.category).color;
+                  return (
                   <label
                     key={t.key}
                     style={{
                       display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px",
-                      border: "1px solid var(--color-line)", borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--color-line)",
+                      borderLeft: `3px solid ${t.locked ? "var(--color-line)" : categoryColor}`,
+                      borderRadius: "var(--radius-sm)",
                       cursor: t.locked ? "not-allowed" : "pointer",
                       opacity: t.locked ? 0.5 : 1,
                       background: selectedTemplateKey === t.key && !t.locked ? "var(--color-bg)" : "transparent",
@@ -296,6 +309,15 @@ export default function AgentsPage() {
                       onChange={() => setSelectedTemplateKey(t.key)}
                       style={{ marginTop: 3 }}
                     />
+                    <span
+                      style={{
+                        width: 28, height: 28, borderRadius: "50%", overflow: "hidden",
+                        border: "1px solid var(--color-line)", flexShrink: 0, marginTop: 1,
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={previewAvatar} alt="" width={28} height={28} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+                    </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 500 }}>
                         {t.label}
@@ -304,7 +326,7 @@ export default function AgentsPage() {
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 4,
                               fontSize: 10, fontFamily: "var(--font-mono)", textTransform: "uppercase",
-                              background: "var(--color-bg)", color: "var(--color-muted)",
+                              background: "var(--color-amber-soft)", color: "var(--color-amber)",
                               padding: "2px 8px", borderRadius: 20,
                             }}
                           >
@@ -315,7 +337,8 @@ export default function AgentsPage() {
                       <div style={{ fontSize: 12, color: "var(--color-muted)" }}>{t.description}</div>
                     </div>
                   </label>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
