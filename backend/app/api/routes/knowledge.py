@@ -14,7 +14,9 @@ from app.core.security import require_organization_access
 from app.core.chunking import chunk_text
 from app.core.rag import retrieve_top_chunks
 from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
+from app.models.organization import Organization
 from app.providers.embeddings.mock import MockEmbeddingProvider
+from app.core.knowledge_sync import sync_knowledge_source
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
@@ -71,6 +73,14 @@ def _index_document(db: Session, organization_id: uuid.UUID, title: str, content
 
     db.commit()
     db.refresh(document)
+
+    # Synchronise vers la base de connaissances Retell (section 42) — c'est
+    # ce qui rend le document réellement consultable par l'agent PENDANT
+    # l'appel, en plus de notre propre index local (utilisé par /search).
+    organization = db.query(Organization).filter(Organization.id == organization_id).first()
+    if organization:
+        sync_knowledge_source(db, organization, texts=[{"title": title, "text": content}])
+
     return document
 
 
@@ -157,8 +167,73 @@ def search_knowledge_base(
 ):
     """
     Recherche par similarité dans la base de connaissances de l'organisation
-    (démonstration directe du pipeline RAG, utilisable aussi bien pour tester
-    manuellement que comme brique réutilisée par le pipeline d'appel).
+    — démonstration/test manuel du pipeline RAG maison. L'appel en direct,
+    lui, s'appuie sur la base de connaissances NATIVE de Retell (section 42),
+    synchronisée à chaque ajout de document/source — voir app.core.knowledge_sync.
     """
     results = retrieve_top_chunks(db, organization_id, payload.query, embedding_provider, top_k=payload.top_k)
     return [SearchResultOut(**r) for r in results]
+
+
+# ---------- Sources d'entreprise : site web, réseaux sociaux (section 42) ----------
+
+class OrganizationSourcesOut(BaseModel):
+    website_url: str | None
+    social_media_urls: str | None
+    documents_count: int
+
+
+class OrganizationSourcesUpdate(BaseModel):
+    website_url: str | None = None
+    social_media_urls: str | None = None  # une URL par ligne
+
+
+@router.get("/sources", response_model=OrganizationSourcesOut)
+def get_organization_sources(
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    organization = db.query(Organization).filter(Organization.id == organization_id).first()
+    documents_count = db.query(KnowledgeDocument).filter(KnowledgeDocument.organization_id == organization_id).count()
+    return OrganizationSourcesOut(
+        website_url=organization.website_url if organization else None,
+        social_media_urls=organization.social_media_urls if organization else None,
+        documents_count=documents_count,
+    )
+
+
+@router.patch("/sources", response_model=OrganizationSourcesOut)
+def update_organization_sources(
+    payload: OrganizationSourcesUpdate,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Enregistre le site web et/ou les réseaux sociaux de l'entreprise
+    (recommandé, jamais obligatoire) — transmis à Retell pour un crawl
+    automatique et une resynchronisation toutes les 24h (section 42).
+    """
+    organization = db.query(Organization).filter(Organization.id == organization_id).first()
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+
+    new_urls = []
+    if payload.website_url is not None and payload.website_url != organization.website_url:
+        organization.website_url = payload.website_url or None
+        if payload.website_url:
+            new_urls.append(payload.website_url)
+    if payload.social_media_urls is not None and payload.social_media_urls != organization.social_media_urls:
+        organization.social_media_urls = payload.social_media_urls or None
+        if payload.social_media_urls:
+            new_urls.extend([u.strip() for u in payload.social_media_urls.splitlines() if u.strip()])
+
+    db.commit()
+
+    if new_urls:
+        sync_knowledge_source(db, organization, urls=new_urls)
+
+    documents_count = db.query(KnowledgeDocument).filter(KnowledgeDocument.organization_id == organization_id).count()
+    return OrganizationSourcesOut(
+        website_url=organization.website_url, social_media_urls=organization.social_media_urls,
+        documents_count=documents_count,
+    )

@@ -271,11 +271,13 @@ class RetellProvider(VoiceProvider):
             timeout=30.0,
         )
 
-    def create_llm(self, general_prompt: str, model: str, tools: list[dict] | None = None) -> dict:
-        """Crée le "cerveau" LLM de l'agent côté Retell (prompt système, et outils éventuels)."""
+    def create_llm(self, general_prompt: str, model: str, tools: list[dict] | None = None, knowledge_base_id: str | None = None) -> dict:
+        """Crée le "cerveau" LLM de l'agent côté Retell (prompt système, outils éventuels, base de connaissances)."""
         payload = {"model": model, "general_prompt": general_prompt}
         if tools:
             payload["general_tools"] = tools
+        if knowledge_base_id:
+            payload["knowledge_base_ids"] = [knowledge_base_id]
         logger.info("create-retell-llm : envoi de %d outil(s) [%s]", len(tools or []), [t.get("name") for t in (tools or [])])
         response = self._client.post("/create-retell-llm", json=payload)
         response.raise_for_status()
@@ -286,11 +288,13 @@ class RetellProvider(VoiceProvider):
         )
         return result
 
-    def update_llm(self, llm_id: str, general_prompt: str, model: str, tools: list[dict] | None = None) -> dict:
-        """Met à jour le LLM EXISTANT (prompt, outils) plutôt que d'en créer un nouveau — crée un brouillon (à publier)."""
+    def update_llm(self, llm_id: str, general_prompt: str, model: str, tools: list[dict] | None = None, knowledge_base_id: str | None = None) -> dict:
+        """Met à jour le LLM EXISTANT (prompt, outils, base de connaissances) plutôt que d'en créer un nouveau — crée un brouillon (à publier)."""
         payload = {"model": model, "general_prompt": general_prompt}
         if tools:
             payload["general_tools"] = tools
+        if knowledge_base_id:
+            payload["knowledge_base_ids"] = [knowledge_base_id]
         response = self._client.patch(f"/update-retell-llm/{llm_id}", json=payload)
         response.raise_for_status()
         return response.json()
@@ -340,6 +344,47 @@ class RetellProvider(VoiceProvider):
         response.raise_for_status()
         return response.json()
 
+    def create_knowledge_base(
+        self, name: str, texts: list[dict] | None = None, urls: list[str] | None = None
+    ) -> dict:
+        """
+        Crée une base de connaissances Retell (section 10/42) — UNE par
+        organisation, partagée par tous ses agents. `texts` : liste de
+        {"title": ..., "text": ...} (nos documents collés/uploadés).
+        `urls` : site web et réseaux sociaux, crawlés et resynchronisés
+        automatiquement par Retell toutes les 24h.
+        """
+        payload: dict = {"knowledge_base_name": name}
+        if texts:
+            payload["knowledge_base_texts"] = texts
+        if urls:
+            payload["knowledge_base_urls"] = urls
+        logger.info("create-knowledge-base : nom=%r %d texte(s), %d url(s)", name, len(texts or []), len(urls or []))
+        response = self._client.post("/create-knowledge-base", json=payload)
+        response.raise_for_status()
+        return response.json()
+
+    def add_knowledge_base_sources(
+        self, knowledge_base_id: str, texts: list[dict] | None = None, urls: list[str] | None = None
+    ) -> dict:
+        """
+        Ajoute une source à une base de connaissances EXISTANTE, sans
+        recréer les précédentes. Format confirmé par une implémentation
+        réelle de cet endpoint (contrairement à /create-knowledge-base, qui
+        utilise directement knowledge_base_texts/knowledge_base_urls, celui-
+        ci attend un tableau `sources` avec un type par élément).
+        """
+        sources = []
+        for t in (texts or []):
+            sources.append({"type": "text", "title": t.get("title", ""), "content": t.get("text", "")})
+        for u in (urls or []):
+            sources.append({"type": "url", "url": u})
+
+        logger.info("add-knowledge-base-sources : kb=%s envoi de %d source(s)", knowledge_base_id, len(sources))
+        response = self._client.post(f"/add-knowledge-base-sources/{knowledge_base_id}", json={"sources": sources})
+        response.raise_for_status()
+        return response.json()
+
     def publish_agent(self, agent_id: str) -> dict:
         """
         Publie la dernière version de l'agent pour la rendre effectivement
@@ -376,6 +421,7 @@ class RetellProvider(VoiceProvider):
         public_base_url: str | None = None,
         existing_agent_id: str | None = None,
         existing_llm_id: str | None = None,
+        knowledge_base_id: str | None = None,
     ) -> dict:
         """
         Crée (ou MET À JOUR si existing_agent_id/existing_llm_id sont
@@ -420,7 +466,7 @@ class RetellProvider(VoiceProvider):
         prompt = system_prompt or f"Tu es {name}, un assistant vocal utile."
 
         if existing_agent_id and existing_llm_id:
-            self.update_llm(existing_llm_id, general_prompt=prompt, model=model, tools=tools)
+            self.update_llm(existing_llm_id, general_prompt=prompt, model=model, tools=tools, knowledge_base_id=knowledge_base_id)
             self.update_agent(
                 existing_agent_id, voice_id=voice_id, language=_language_code(language),
                 webhook_url=webhook_url, llm_id=existing_llm_id,
@@ -428,7 +474,7 @@ class RetellProvider(VoiceProvider):
             self.publish_agent(existing_agent_id)
             return {"agent_id": existing_agent_id, "llm_id": existing_llm_id}
 
-        llm = self.create_llm(general_prompt=prompt, model=model, tools=tools)
+        llm = self.create_llm(general_prompt=prompt, model=model, tools=tools, knowledge_base_id=knowledge_base_id)
         agent = self.create_retell_agent(
             name=name, llm_id=llm["llm_id"], voice_id=voice_id, language=_language_code(language), webhook_url=webhook_url
         )

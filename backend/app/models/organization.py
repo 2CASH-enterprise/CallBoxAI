@@ -22,4 +22,16 @@ class Organization(Base):
     # Rattachement optionnel à un distributeur (section 39.2)
     distributor_id = Column(GUID(), ForeignKey("distributors.id"), nullable=True)
 
+    # Enrichissement de la connaissance de l'entreprise (section 10/42) :
+    # site web et réseaux sociaux, transmis à la base de connaissances
+    # Retell (crawl automatique, resynchronisé toutes les 24h côté Retell)
+    # — recommandé mais jamais obligatoire.
+    website_url = Column(String, nullable=True)
+    social_media_urls = Column(String, nullable=True)  # une URL par ligne
+
+    # Base de connaissances Retell (section 10/42) : UNE base par
+    # organisation, partagée par tous ses agents — créée au premier
+    # document/source ajouté, puis mise à jour de façon incrémentale.
+    retell_knowledge_base_id = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)

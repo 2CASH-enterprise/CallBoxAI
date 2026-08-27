@@ -2,13 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useOrganization } from "@/lib/OrganizationContext";
-import { api, KnowledgeDocument, KnowledgeSearchResult } from "@/lib/api";
+import { api, KnowledgeDocument, KnowledgeSearchResult, OrganizationSources } from "@/lib/api";
 import styles from "./knowledge.module.css";
+
+const OBJECTIONS_TEMPLATE = {
+  title: "Objections fréquentes",
+  content:
+    "Objection : \"C'est trop cher\"\n" +
+    "Réponse : [expliquez ce qui justifie le prix — ce qui est inclus, le résultat obtenu]\n\n" +
+    "Objection : \"J'ai déjà un fournisseur/une solution\"\n" +
+    "Réponse : [ce qui différencie votre offre, ce que le client pourrait gagner à changer]\n\n" +
+    "Objection : \"Je n'ai pas le temps là\"\n" +
+    "Réponse : [proposer un rappel à un horaire précis plutôt que d'insister]\n\n" +
+    "Ajoutez ici les objections propres à votre secteur et vos réponses habituelles.",
+};
 
 export default function KnowledgePage() {
   const { currentOrg } = useOrganization();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [sources, setSources] = useState<OrganizationSources | null>(null);
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [socialMediaUrls, setSocialMediaUrls] = useState("");
+  const [savingSources, setSavingSources] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<"text" | "file">("text");
@@ -24,9 +41,35 @@ export default function KnowledgePage() {
     if (!currentOrg) return;
     setLoading(true);
     api.listKnowledgeDocuments(currentOrg.organization_id).then(setDocuments).finally(() => setLoading(false));
+    api.getOrganizationSources(currentOrg.organization_id).then((s) => {
+      setSources(s);
+      setWebsiteUrl(s.website_url || "");
+      setSocialMediaUrls(s.social_media_urls || "");
+    });
   };
 
   useEffect(load, [currentOrg]);
+
+  async function handleSaveSources(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentOrg) return;
+    setSavingSources(true);
+    try {
+      const updated = await api.updateOrganizationSources(currentOrg.organization_id, {
+        website_url: websiteUrl.trim(),
+        social_media_urls: socialMediaUrls.trim(),
+      });
+      setSources(updated);
+    } finally {
+      setSavingSources(false);
+    }
+  }
+
+  function useObjectionsTemplate() {
+    setForm(OBJECTIONS_TEMPLATE);
+    setMode("text");
+    setModalOpen(true);
+  }
 
   async function handleCreateText(e: React.FormEvent) {
     e.preventDefault();
@@ -81,9 +124,45 @@ export default function KnowledgePage() {
     <div>
       <div className={styles.header}>
         <h1 className={styles.title}>Base de connaissances</h1>
-        <button className={styles.button} onClick={() => setModalOpen(true)}>
-          + Ajouter un document
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-ghost" onClick={useObjectionsTemplate}>
+            + Modèle "Objections fréquentes"
+          </button>
+          <button className={styles.button} onClick={() => setModalOpen(true)}>
+            + Ajouter un document
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>Sources de l'entreprise (recommandé)</div>
+        <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 12 }}>
+          Votre site web et vos réseaux sociaux sont automatiquement explorés et tenus à jour (resynchronisation
+          toutes les 24h), pour une meilleure connaissance de votre entreprise — jamais obligatoire.
+        </p>
+        <form onSubmit={handleSaveSources} style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
+          <input
+            placeholder="Site web (ex. https://mon-entreprise.com)"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+          />
+          <textarea
+            rows={2}
+            placeholder="Réseaux sociaux — une URL par ligne (Facebook, Instagram, LinkedIn...)"
+            value={socialMediaUrls}
+            onChange={(e) => setSocialMediaUrls(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary" disabled={savingSources} style={{ alignSelf: "flex-start" }}>
+            {savingSources ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </form>
+        {sources && sources.documents_count < 2 && (
+          <p style={{ fontSize: 12.5, color: "var(--color-amber)", marginTop: 12 }}>
+            {sources.documents_count === 0
+              ? "Aucun document pour l'instant — au moins 2 sont recommandés pour de bons résultats."
+              : "Un seul document pour l'instant — au moins 2 sont recommandés pour de bons résultats."}
+          </p>
+        )}
       </div>
 
       <div className={styles.section}>

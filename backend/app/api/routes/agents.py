@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.security import require_organization_access, get_current_user
 from app.core.config import settings
 from app.models.agent import Agent
+from app.models.organization import Organization
 from app.models.agent_request import AgentRequest, VALID_STATUSES as AGENT_REQUEST_STATUSES
 from app.models.user import User
 
@@ -96,7 +97,7 @@ class WebCallOut(BaseModel):
     call_id: str
 
 
-def _provision_retell_agent_if_configured(agent: Agent) -> None:
+def _provision_retell_agent_if_configured(agent: Agent, db: Session) -> None:
     """
     Crée (ou MET À JOUR si l'agent a déjà été provisionné) l'agent
     correspondant côté Retell (section 16), de façon invisible pour le
@@ -113,11 +114,14 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
     if settings.voice_provider != "retell" or not settings.retell_api_key:
         return
 
+    organization = db.query(Organization).filter(Organization.id == agent.organization_id).first()
+    knowledge_base_id = organization.retell_knowledge_base_id if organization else None
+
     logger.info(
         "Provisionnement Retell démarré : agent=%s pms_enabled=%s category=%s "
-        "public_base_url=%r existing_agent_id=%r existing_llm_id=%r",
+        "public_base_url=%r existing_agent_id=%r existing_llm_id=%r knowledge_base_id=%r",
         agent.id, agent.pms_enabled, agent.category,
-        settings.public_base_url, agent.retell_agent_id, agent.retell_llm_id,
+        settings.public_base_url, agent.retell_agent_id, agent.retell_llm_id, knowledge_base_id,
     )
 
     try:
@@ -139,6 +143,7 @@ def _provision_retell_agent_if_configured(agent: Agent) -> None:
             existing_agent_id=agent.retell_agent_id,
             existing_llm_id=agent.retell_llm_id,
             public_base_url=settings.public_base_url or None,
+            knowledge_base_id=knowledge_base_id,
         )
         agent.retell_agent_id = result["agent_id"]
         agent.retell_llm_id = result["llm_id"]
@@ -162,7 +167,7 @@ def _create_agent_for_organization(db: Session, organization_id: uuid.UUID, payl
     db.commit()
     db.refresh(agent)
 
-    _provision_retell_agent_if_configured(agent)
+    _provision_retell_agent_if_configured(agent, db)
     db.commit()
     db.refresh(agent)
     return agent
@@ -200,7 +205,7 @@ def _update_agent(db: Session, agent: Agent, payload: AgentUpdate) -> Agent:
         setattr(agent, field, value)
 
     if needs_reprovision:
-        _provision_retell_agent_if_configured(agent)
+        _provision_retell_agent_if_configured(agent, db)
 
     db.commit()
     db.refresh(agent)

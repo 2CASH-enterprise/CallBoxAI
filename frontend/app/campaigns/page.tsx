@@ -23,6 +23,7 @@ export default function CampaignsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [runningBatch, setRunningBatch] = useState(false);
+  const [documentsCount, setDocumentsCount] = useState<number | null>(null);
   const [lastBatch, setLastBatch] = useState<BatchResult | null>(null);
 
   const loadCampaigns = () => {
@@ -35,6 +36,7 @@ export default function CampaignsPage() {
       setAgents(list);
       if (list.length > 0) setForm((f) => ({ ...f, agent_id: f.agent_id || list[0].id }));
     });
+    api.getOrganizationSources(currentOrg.organization_id).then((s) => setDocumentsCount(s.documents_count));
   };
 
   useEffect(loadCampaigns, [currentOrg]);
@@ -103,6 +105,13 @@ export default function CampaignsPage() {
 
   async function handleRunBatch() {
     if (!currentOrg || !selectedId) return;
+    if (documentsCount !== null && documentsCount < 2) {
+      const proceed = window.confirm(
+        `Votre base de connaissances ne compte que ${documentsCount} document(s). Au moins 2 sont recommandés ` +
+        `pour de meilleurs résultats (l'agent aura plus de contexte pour répondre). Lancer quand même ?`
+      );
+      if (!proceed) return;
+    }
     setRunningBatch(true);
     try {
       const result = await api.runCampaignBatch(currentOrg.organization_id, selectedId);

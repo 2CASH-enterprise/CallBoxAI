@@ -274,6 +274,12 @@ export interface KnowledgeDocument {
   created_at: string;
 }
 
+export interface OrganizationSources {
+  website_url: string | null;
+  social_media_urls: string | null;
+  documents_count: number;
+}
+
 export interface KnowledgeSearchResult {
   chunk_id: string;
   document_id: string;
@@ -698,6 +704,14 @@ export const api = {
       method: "POST",
       organizationId,
       body: JSON.stringify({ query, top_k }),
+    }),
+  getOrganizationSources: (organizationId: string) =>
+    request<OrganizationSources>("/knowledge/sources", { organizationId }),
+  updateOrganizationSources: (organizationId: string, data: { website_url?: string; social_media_urls?: string }) =>
+    request<OrganizationSources>("/knowledge/sources", {
+      method: "PATCH",
+      organizationId,
+      body: JSON.stringify(data),
     }),
 
   listContacts: (organizationId: string) =>

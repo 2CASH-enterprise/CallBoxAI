@@ -143,7 +143,7 @@ def test_update_voice_id_reuses_same_retell_agent_no_duplicate(mock_publish, moc
         mock_create_llm.assert_called_once()  # toujours une seule fois
         mock_create_agent.assert_called_once()  # toujours une seule fois
         mock_update_llm.assert_called_once_with(
-            "llm_original", general_prompt="Tu es Agent test, un assistant vocal utile.", model="gpt-4o-mini", tools=None
+            "llm_original", general_prompt="Tu es Agent test, un assistant vocal utile.", model="gpt-4o-mini", tools=None, knowledge_base_id=None
         )
         mock_update_agent.assert_called_once()
         _, update_agent_kwargs = mock_update_agent.call_args
