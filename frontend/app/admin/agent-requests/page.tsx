@@ -86,6 +86,8 @@ export default function AgentRequestsPage() {
       pms_enabled: agent.pms_enabled,
       kyc_enabled: agent.kyc_enabled,
       kyc_link_url: agent.kyc_link_url || "",
+      whatsapp_enabled: agent.whatsapp_enabled,
+      meeting_booking_enabled: agent.meeting_booking_enabled,
       category: agent.category,
     });
   }
@@ -308,6 +310,14 @@ export default function AgentRequestsPage() {
               </div>
             )}
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={fulfillForm.whatsapp_enabled} onChange={(e) => setFulfillForm({ ...fulfillForm, whatsapp_enabled: e.target.checked })} />
+              WhatsApp (envoi d'offre/brochure en direct)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={fulfillForm.meeting_booking_enabled} onChange={(e) => setFulfillForm({ ...fulfillForm, meeting_booking_enabled: e.target.checked })} />
+              Réservation de RDV en direct (B2B)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input type="checkbox" checked={fulfillForm.transfer_enabled} onChange={(e) => setFulfillForm({ ...fulfillForm, transfer_enabled: e.target.checked })} />
               Transfert humain
             </label>
@@ -410,6 +420,14 @@ export default function AgentRequestsPage() {
                 <input value={editForm.kyc_link_url} onChange={(e) => setEditForm({ ...editForm, kyc_link_url: e.target.value })} />
               </div>
             )}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={editForm.whatsapp_enabled} onChange={(e) => setEditForm({ ...editForm, whatsapp_enabled: e.target.checked })} />
+              WhatsApp (envoi d'offre/brochure en direct)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={editForm.meeting_booking_enabled} onChange={(e) => setEditForm({ ...editForm, meeting_booking_enabled: e.target.checked })} />
+              Réservation de RDV en direct (B2B)
+            </label>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input type="checkbox" checked={editForm.transfer_enabled} onChange={(e) => setEditForm({ ...editForm, transfer_enabled: e.target.checked })} />
               Transfert humain

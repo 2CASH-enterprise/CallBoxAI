@@ -75,6 +75,14 @@ class Agent(Base):
     # côté Super Admin, pour comparer/rafraîchir manuellement si besoin.
     source_template = Column(String, nullable=True)
 
+    # Prospection commerciale B2C/B2B (section 42) : envoi automatique
+    # d'une brochure/offre par WhatsApp si le prospect montre de l'intérêt,
+    # et réservation directe d'un rendez-vous en direct pendant l'appel
+    # (B2B uniquement — en B2C, l'intérêt est transmis à un commercial qui
+    # rappelle, l'IA ne réserve jamais de RDV elle-même).
+    whatsapp_enabled = Column(Boolean, default=False)
+    meeting_booking_enabled = Column(Boolean, default=False)
+
     # Métier de l'agent (section 19/41) : adapte le VOCABULAIRE affiché de la
     # classification automatique ("Prospect tiède" n'a aucun sens pour un
     # client d'hôtel) — voir app.core.classification_labels. La logique

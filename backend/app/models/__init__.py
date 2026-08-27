@@ -16,6 +16,7 @@ from app.models.ticket import Ticket
 from app.models.sms_log import SmsLog
 from app.models.demo_call_log import DemoCallLog
 from app.models.agent_request import AgentRequest
+from app.models.whatsapp_log import WhatsAppLog
 
 __all__ = [
     "Organization",
@@ -40,4 +41,5 @@ __all__ = [
     "SmsLog",
     "DemoCallLog",
     "AgentRequest",
+    "WhatsAppLog",
 ]

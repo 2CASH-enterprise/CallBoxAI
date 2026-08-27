@@ -276,6 +276,8 @@ class AdminAgentOut(BaseModel):
     kyc_link_url: str | None
     category: str
     source_template: str | None
+    whatsapp_enabled: bool
+    meeting_booking_enabled: bool
     retell_agent_id: str | None
 
 
@@ -295,7 +297,8 @@ def list_all_agents(
             business_hours_start=a.business_hours_start, business_hours_end=a.business_hours_end,
             ticketing_enabled=a.ticketing_enabled, pms_enabled=a.pms_enabled,
             kyc_enabled=a.kyc_enabled, kyc_link_url=a.kyc_link_url, category=a.category,
-            source_template=a.source_template, retell_agent_id=a.retell_agent_id,
+            source_template=a.source_template, whatsapp_enabled=a.whatsapp_enabled,
+            meeting_booking_enabled=a.meeting_booking_enabled, retell_agent_id=a.retell_agent_id,
         )
         for a, org in rows
     ]
@@ -330,5 +333,6 @@ def admin_update_agent(
         business_hours_start=updated.business_hours_start, business_hours_end=updated.business_hours_end,
         ticketing_enabled=updated.ticketing_enabled, pms_enabled=updated.pms_enabled,
         kyc_enabled=updated.kyc_enabled, kyc_link_url=updated.kyc_link_url, category=updated.category,
-        source_template=updated.source_template, retell_agent_id=updated.retell_agent_id,
+        source_template=updated.source_template, whatsapp_enabled=updated.whatsapp_enabled,
+        meeting_booking_enabled=updated.meeting_booking_enabled, retell_agent_id=updated.retell_agent_id,
     )

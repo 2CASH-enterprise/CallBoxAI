@@ -109,6 +109,8 @@ export interface Agent {
   kyc_link_url: string | null;
   category: string;
   source_template: string | null;
+  whatsapp_enabled: boolean;
+  meeting_booking_enabled: boolean;
 }
 
 export interface AdminAgent extends Agent {
@@ -374,6 +376,14 @@ export interface SmsLog {
   created_at: string;
 }
 
+export interface WhatsAppLog {
+  id: string;
+  to_number: string;
+  body: string;
+  provider: string;
+  created_at: string;
+}
+
 export interface Distributor {
   id: string;
   name: string;
@@ -519,6 +529,7 @@ export const api = {
       transfer_enabled?: boolean; transfer_number?: string; transfer_instructions?: string;
       voice_id?: string; business_hours_start?: string; business_hours_end?: string;
       ticketing_enabled?: boolean; pms_enabled?: boolean; kyc_enabled?: boolean; kyc_link_url?: string;
+      whatsapp_enabled?: boolean; meeting_booking_enabled?: boolean;
       category?: string;
     }
   ) =>
@@ -535,6 +546,7 @@ export const api = {
       transfer_enabled: boolean; transfer_number: string; transfer_instructions: string;
       voice_id: string; business_hours_start: string; business_hours_end: string;
       ticketing_enabled: boolean; pms_enabled: boolean; kyc_enabled: boolean; kyc_link_url: string;
+      whatsapp_enabled: boolean; meeting_booking_enabled: boolean;
       category: string;
     }>
   ) =>
@@ -824,6 +836,7 @@ export const api = {
     }),
 
   listSms: (organizationId: string) => request<SmsLog[]>("/sms", { organizationId }),
+  listWhatsApp: (organizationId: string) => request<WhatsAppLog[]>("/whatsapp", { organizationId }),
   getTodayDashboard: (organizationId: string) => request<TodayDashboard>("/dashboard/today", { organizationId }),
 
   listDistributors: () => request<Distributor[]>("/distributors"),

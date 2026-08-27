@@ -40,6 +40,10 @@ const clientLinks: NavItem[] = [
     isRelevant: (agents) => agents.some((a) => a.pms_enabled || a.kyc_enabled),
   },
   {
+    href: "/whatsapp", label: "WhatsApp", icon: MessageCircle,
+    isRelevant: (agents) => agents.some((a) => a.whatsapp_enabled),
+  },
+  {
     href: "/tickets", label: "Tickets", icon: LifeBuoy,
     isRelevant: (agents) => agents.some((a) => a.ticketing_enabled),
   },

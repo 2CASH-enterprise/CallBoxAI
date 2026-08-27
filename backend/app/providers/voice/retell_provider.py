@@ -199,6 +199,69 @@ def _build_kyc_tools(organization_id: str, agent_id: str, public_base_url: str) 
     ]
 
 
+def _build_whatsapp_tool(organization_id: str, public_base_url: str) -> dict:
+    """
+    Outil d'envoi WhatsApp (section 42) — commun à la prospection B2C et
+    B2B : dès que le prospect montre de l'intérêt, l'agent envoie un
+    résumé/brochure/offre par WhatsApp, en direct pendant l'appel.
+    """
+    base = public_base_url.rstrip("/")
+    return {
+        "type": "custom",
+        "name": "send_whatsapp_brochure",
+        "description": (
+            "Envoie par WhatsApp un résumé, une brochure ou une offre au prospect. "
+            "Utilise ceci dès que le prospect montre un intérêt réel pendant la conversation."
+        ),
+        "url": f"{base}/prospection/tools/send-whatsapp?organization_id={organization_id}",
+        "method": "POST",
+        "speak_after_execution": True,
+        "args_at_root": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "guest_phone": {"type": "string", "description": "Numéro de téléphone du prospect, format international"},
+                "guest_name": {"type": "string", "description": "Nom du prospect (optionnel)"},
+                "content_summary": {"type": "string", "description": "Résumé de ce qui doit être envoyé (offre, brochure, cas client...)"},
+            },
+            "required": ["guest_phone", "content_summary"],
+        },
+    }
+
+
+def _build_meeting_tool(organization_id: str, agent_id: str, public_base_url: str) -> dict:
+    """
+    Outil de réservation de rendez-vous (section 42, B2B uniquement) —
+    l'agent réserve lui-même un créneau dans le calendrier de l'équipe
+    commerciale, contrairement au B2C où l'intérêt est simplement transmis
+    à un commercial qui rappelle.
+    """
+    base = public_base_url.rstrip("/")
+    return {
+        "type": "custom",
+        "name": "book_meeting",
+        "description": (
+            "Réserve un rendez-vous commercial dans le calendrier de l'équipe. "
+            "Utilise ceci uniquement pour la prospection B2B, quand le prospect confirme un créneau."
+        ),
+        "url": f"{base}/prospection/tools/book-meeting?organization_id={organization_id}&agent_id={agent_id}",
+        "method": "POST",
+        "speak_after_execution": True,
+        "args_at_root": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "guest_phone": {"type": "string", "description": "Numéro de téléphone du prospect, format international"},
+                "guest_name": {"type": "string", "description": "Nom du prospect (optionnel)"},
+                "scheduled_at": {"type": "string", "description": "Date et heure du rendez-vous, format ISO 8601 (ex. 2026-09-20T14:00:00)"},
+                "duration_minutes": {"type": "integer", "description": "Durée du rendez-vous en minutes (par défaut 30)"},
+                "notes": {"type": "string", "description": "Notes de qualification pour le commercial (BANT, contexte...)"},
+            },
+            "required": ["guest_phone", "scheduled_at"],
+        },
+    }
+
+
 class RetellProvider(VoiceProvider):
     def __init__(self, api_key: str, agent_id: str):
         self._agent_id = agent_id
@@ -306,6 +369,8 @@ class RetellProvider(VoiceProvider):
         voice_id: str,
         pms_enabled: bool = False,
         kyc_enabled: bool = False,
+        whatsapp_enabled: bool = False,
+        meeting_booking_enabled: bool = False,
         callboxai_agent_id: str | None = None,
         organization_id: str | None = None,
         public_base_url: str | None = None,
@@ -332,15 +397,23 @@ class RetellProvider(VoiceProvider):
         sont fournies, l'agent reçoit les outils de consultation/réservation
         PMS EN DIRECT pendant l'appel (section 16). Si kyc_enabled est vrai
         (avec callboxai_agent_id fourni), l'agent reçoit l'outil d'envoi du
-        lien KYC (section 41). Sans ces informations, l'agent se crée quand
-        même, simplement sans ces outils — résilience (section 29), pas de
-        blocage sur une configuration manquante.
+        lien KYC (section 41). Si whatsapp_enabled est vrai, l'agent reçoit
+        l'outil d'envoi WhatsApp (section 42). Si meeting_booking_enabled
+        est vrai (avec callboxai_agent_id fourni), l'agent reçoit l'outil de
+        réservation de rendez-vous (section 42, prospection B2B). Sans ces
+        informations, l'agent se crée quand même, simplement sans ces
+        outils — résilience (section 29), pas de blocage sur une
+        configuration manquante.
         """
         tools: list[dict] = []
         if pms_enabled and organization_id and public_base_url:
             tools += _build_pms_tools(organization_id, public_base_url)
         if kyc_enabled and organization_id and callboxai_agent_id and public_base_url:
             tools += _build_kyc_tools(organization_id, callboxai_agent_id, public_base_url)
+        if whatsapp_enabled and organization_id and public_base_url:
+            tools.append(_build_whatsapp_tool(organization_id, public_base_url))
+        if meeting_booking_enabled and organization_id and callboxai_agent_id and public_base_url:
+            tools.append(_build_meeting_tool(organization_id, callboxai_agent_id, public_base_url))
         tools = tools or None
 
         webhook_url = f"{public_base_url.rstrip('/')}/webhooks/retell" if public_base_url else None
