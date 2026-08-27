@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Clock, Check, X, Plus, CalendarClock, BedDouble, Search } from "lucide-react";
+import { Calendar, Clock, Check, X, Plus, CalendarClock, BedDouble, Search, List, LayoutGrid } from "lucide-react";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Appointment, Contact, AvailabilityOffer } from "@/lib/api";
 import { KpiCard } from "@/components/KpiCard";
 import { SkeletonRow } from "@/components/Skeleton";
+import { AppointmentsCalendar } from "@/components/AppointmentsCalendar";
 import styles from "./appointments.module.css";
 
 const STATUS_CLASS: Record<string, string> = {
@@ -40,6 +41,8 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"list" | "calendar">("calendar");
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ contact_id: "", date: "", time: "10:00", duration_minutes: "30", notes: "" });
@@ -165,6 +168,20 @@ export default function AppointmentsPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>Rendez-vous</h1>
         <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", border: "1px solid var(--color-line)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+            <button
+              onClick={() => setView("calendar")}
+              style={{ padding: "8px 12px", background: view === "calendar" ? "var(--color-navy)" : "transparent", color: view === "calendar" ? "white" : "var(--color-muted)", border: "none" }}
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setView("list")}
+              style={{ padding: "8px 12px", background: view === "list" ? "var(--color-navy)" : "transparent", color: view === "list" ? "white" : "var(--color-muted)", border: "none" }}
+            >
+              <List size={14} />
+            </button>
+          </div>
           <button className="btn btn-ghost" onClick={() => setPmsOpen((v) => !v)} disabled={contacts.length === 0}>
             <BedDouble size={14} /> Réservation hôtel (PMS)
           </button>
@@ -174,6 +191,38 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
+      {view === "calendar" && !loading && (
+        <div style={{ marginBottom: 20 }}>
+          <AppointmentsCalendar appointments={appointments} onSelect={setSelectedAppointment} />
+        </div>
+      )}
+
+      {selectedAppointment && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedAppointment(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <h2>{selectedAppointment.contact_name || selectedAppointment.contact_phone}</h2>
+            <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 4 }}>
+              {new Date(selectedAppointment.scheduled_at).toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" })}
+            </p>
+            <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 4 }}>{selectedAppointment.contact_phone}</p>
+            {selectedAppointment.qualification && (
+              <p style={{ fontSize: 13, marginBottom: 4 }}>Qualification : <strong>{selectedAppointment.qualification}</strong></p>
+            )}
+            {selectedAppointment.room_type && (
+              <p style={{ fontSize: 13, marginBottom: 4 }}>Chambre : {selectedAppointment.room_type}</p>
+            )}
+            {selectedAppointment.notes && (
+              <p style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 10, whiteSpace: "pre-wrap" }}>{selectedAppointment.notes}</p>
+            )}
+            <div className={styles.modalActions}>
+              <button className="btn btn-ghost" onClick={() => setSelectedAppointment(null)}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {view === "list" && (
+      <>
       {pmsOpen && (
         <div className="surface-card" style={{ padding: 20, marginBottom: 20 }}>
           <div className={styles.dayLabel} style={{ marginBottom: 12 }}>Vérifier une disponibilité</div>
@@ -295,6 +344,8 @@ export default function AppointmentsPage() {
                 ))}
             </div>
           ))
+      )}
+      </>
       )}
 
       {modalOpen && (

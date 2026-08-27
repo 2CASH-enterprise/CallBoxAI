@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.models.appointment import Appointment
 from app.models.contact import Contact
+from app.models.call import Call
 from app.providers.pms.mock import MockPMSProvider
 
 logger = logging.getLogger(__name__)
@@ -54,9 +55,27 @@ class AppointmentOut(BaseModel):
     check_out_at: datetime | None
     pms_confirmation_number: str | None
     created_at: datetime
+    # Enrichissement pour l'affichage calendrier (section 42) — évite au
+    # frontend de refaire un aller-retour par contact_id/call_id.
+    contact_name: str | None = None
+    contact_phone: str | None = None
+    qualification: str | None = None  # reprise de Call.qualification, pour le code couleur
 
     class Config:
         from_attributes = True
+
+
+def _enrich_appointment(db: Session, appointment: Appointment) -> AppointmentOut:
+    out = AppointmentOut.model_validate(appointment)
+    contact = db.query(Contact).filter(Contact.id == appointment.contact_id).first()
+    if contact:
+        out.contact_name = f"{contact.first_name or ''} {contact.last_name or ''}".strip() or contact.phone
+        out.contact_phone = contact.phone
+    if appointment.call_id:
+        call = db.query(Call).filter(Call.id == appointment.call_id).first()
+        if call:
+            out.qualification = call.qualification
+    return out
 
 
 @router.post("/appointments", response_model=AppointmentOut)
@@ -76,7 +95,7 @@ def create_appointment(
     contact.status = "RDV"
     db.commit()
     db.refresh(appointment)
-    return appointment
+    return _enrich_appointment(db, appointment)
 
 
 @router.get("/appointments", response_model=list[AppointmentOut])
@@ -84,12 +103,13 @@ def list_appointments(
     db: Session = Depends(get_db),
     organization_id: uuid.UUID = Depends(require_organization_access),
 ):
-    return (
+    appointments = (
         db.query(Appointment)
         .filter(Appointment.organization_id == organization_id)
         .order_by(Appointment.scheduled_at.asc())
         .all()
     )
+    return [_enrich_appointment(db, a) for a in appointments]
 
 
 @router.patch("/appointments/{appointment_id}", response_model=AppointmentOut)
@@ -128,4 +148,4 @@ def update_appointment(
 
     db.commit()
     db.refresh(appointment)
-    return appointment
+    return _enrich_appointment(db, appointment)

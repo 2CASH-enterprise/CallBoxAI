@@ -358,6 +358,9 @@ export interface Appointment {
   check_out_at: string | null;
   pms_confirmation_number: string | null;
   created_at: string;
+  contact_name: string | null;
+  contact_phone: string | null;
+  qualification: string | null;
 }
 
 export interface AvailabilityOffer {

@@ -1,0 +1,89 @@
+.wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-line);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nav { display: flex; align-items: center; gap: 6px; }
+.nav button {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  display: flex;
+  color: var(--color-ink);
+}
+.todayButton { padding: 6px 12px !important; font-size: 12.5px; }
+.weekLabel { margin-left: 12px; font-family: var(--font-mono); font-size: 12.5px; color: var(--color-muted); }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.legendItem { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-muted); }
+.legendDot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  overflow-x: auto;
+}
+
+.timeColumn { border-right: 1px solid var(--color-line); }
+.dayHeaderSpacer { height: 52px; border-bottom: 1px solid var(--color-line); }
+.hourLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-muted);
+  padding: 2px 6px 0 0;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.dayColumn { border-right: 1px solid var(--color-line); min-width: 110px; }
+.dayColumn:last-child { border-right: none; }
+
+.dayHeader {
+  height: 52px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--color-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.dayHeaderToday { background: var(--color-signal-soft); }
+.dayLabel { font-size: 10.5px; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.dayNumber { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+
+.dayBody { position: relative; }
+.hourSlot { border-bottom: 1px solid var(--color-line); box-sizing: border-box; }
+
+.appointmentBlock {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 6px;
+  padding: 3px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+}
+.blockTime { font-family: var(--font-mono); font-size: 10px; font-weight: 600; }
+.blockName { font-size: 11px; color: var(--color-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 44px repeat(7, 90px); }
+}
