@@ -37,8 +37,8 @@ export interface AgentTemplate {
 export const AGENT_TEMPLATES: AgentTemplate[] = [
   {
     key: "prospection_b2c",
-    label: "Prospection commerciale B2C",
-    description: "Qualifie le prospect en cascade, envoie une offre par WhatsApp, transmet le lead intéressé à un commercial qui rappelle.",
+    label: "Commercial IA — Acquisition (B2C)",
+    description: "Appelle vos prospects, les qualifie, échange avec eux sur WhatsApp, et transmet à votre équipe les contacts vraiment intéressés.",
     fields: {
       name: "Agent Prospection B2C",
       objective: "Qualifier les prospects et transmettre les leads intéressés à un commercial",
@@ -88,8 +88,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   },
   {
     key: "prospection_b2b",
-    label: "Prospection commerciale B2B",
-    description: "Qualification BANT/MEDDICC en cascade, envoie une présentation par WhatsApp, réserve directement un rendez-vous commercial.",
+    label: "Commercial IA — Acquisition (B2B)",
+    description: "Qualifie vos prospects entreprises, envoie une présentation par WhatsApp, réserve directement les rendez-vous commerciaux.",
     fields: {
       name: "Agent Prospection B2B",
       objective: "Qualifier les entreprises prospectées et réserver des rendez-vous commerciaux",
@@ -143,8 +143,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   },
   {
     key: "service_client",
-    label: "Service Client",
-    description: "Répond aux demandes de niveau 1, escalade si nécessaire.",
+    label: "Conseiller Service Client IA",
+    description: "Répond aux demandes courantes de vos clients, s'appuie sur votre documentation, ouvre un suivi et transfère les urgences réelles.",
     fields: {
       name: "Agent Service Client",
       objective: "Répondre aux demandes de niveau 1 et escalader si besoin",
@@ -182,8 +182,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   },
   {
     key: "hotellerie",
-    label: "Réceptionniste Hôtel",
-    description: "Réservations en direct, modification, annulation, confirmations email/SMS.",
+    label: "Réceptionniste IA",
+    description: "Répond à vos clients jour et nuit, consulte les disponibilités en direct, prend et confirme les réservations.",
     fields: {
       name: "Agent Réceptionniste Hôtel",
       objective: "Répondre aux demandes des clients et de l'hôtel, prendre les réservations, transférer si besoin",
@@ -334,8 +334,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   },
   {
     key: "reactivation",
-    label: "Fidélisation & Upsell — Réactivation",
-    description: "Rappelle les clients ayant résilié, comprend pourquoi, propose une offre de retour.",
+    label: "Commercial IA — Fidélisation (Réactivation)",
+    description: "Recontacte les clients partis, comprend pourquoi, leur propose une offre de retour adaptée.",
     fields: {
       name: "Agent Réactivation",
       objective: "Comprendre pourquoi le client est parti et lui proposer une offre de retour",
@@ -382,8 +382,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   },
   {
     key: "upsell",
-    label: "Fidélisation & Upsell — Upsell",
-    description: "Identifie les clients éligibles à une offre supérieure et leur propose la montée en gamme.",
+    label: "Commercial IA — Fidélisation (Upsell)",
+    description: "Identifie les clients actifs éligibles à une offre supérieure et leur propose une montée en gamme pertinente.",
     fields: {
       name: "Agent Upsell",
       objective: "Identifier le besoin du client et proposer une montée en gamme adaptée",
@@ -431,8 +431,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   },
   {
     key: "cross_sell",
-    label: "Fidélisation & Upsell — Cross-sell",
-    description: "Identifie les clients n'ayant pas encore un second produit et leur en présente l'intérêt.",
+    label: "Commercial IA — Fidélisation (Cross-sell)",
+    description: "Présente à vos clients actifs un second produit complémentaire, adapté à leurs habitudes.",
     fields: {
       name: "Agent Cross-sell",
       objective: "Présenter un second produit pertinent à des clients déjà actifs sur un premier",
