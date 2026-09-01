@@ -111,6 +111,25 @@ export interface Agent {
   source_template: string | null;
   whatsapp_enabled: boolean;
   meeting_booking_enabled: boolean;
+  team_id: string | null;
+}
+
+export interface AgentTeam {
+  id: string;
+  organization_id: string;
+  name: string;
+  agent_ids: string[];
+  created_at: string;
+}
+
+export interface AgentTeamSummary {
+  team_id: string;
+  team_name: string;
+  since: string;
+  total_calls: number;
+  total_call_minutes: number;
+  total_whatsapp_messages: number;
+  total_appointments: number;
 }
 
 export interface AdminAgent extends Agent {
@@ -549,6 +568,20 @@ export const api = {
     }),
 
   listAllAgents: () => request<AdminAgent[]>("/admin/agents"),
+
+  listAgentTeams: (organizationId: string) => request<AgentTeam[]>("/agent-teams", { organizationId }),
+  createAgentTeam: (organizationId: string, name: string) =>
+    request<AgentTeam>("/agent-teams", { method: "POST", organizationId, body: JSON.stringify({ name }) }),
+  renameAgentTeam: (organizationId: string, teamId: string, name: string) =>
+    request<AgentTeam>(`/agent-teams/${teamId}`, { method: "PATCH", organizationId, body: JSON.stringify({ name }) }),
+  deleteAgentTeam: (organizationId: string, teamId: string) =>
+    request<{ status: string }>(`/agent-teams/${teamId}`, { method: "DELETE", organizationId }),
+  addAgentToTeam: (organizationId: string, teamId: string, agentId: string) =>
+    request<AgentTeam>(`/agent-teams/${teamId}/agents`, { method: "POST", organizationId, body: JSON.stringify({ agent_id: agentId }) }),
+  removeAgentFromTeam: (organizationId: string, teamId: string, agentId: string) =>
+    request<AgentTeam>(`/agent-teams/${teamId}/agents/${agentId}`, { method: "DELETE", organizationId }),
+  getTeamSummary: (organizationId: string, teamId: string) =>
+    request<AgentTeamSummary>(`/agent-teams/${teamId}/summary`, { organizationId }),
   adminUpdateAgent: (
     agentId: string,
     data: Partial<{

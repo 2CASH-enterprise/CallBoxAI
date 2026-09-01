@@ -19,6 +19,7 @@ class WhatsAppLog(Base):
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(GUID(), ForeignKey("organizations.id"), nullable=False)
+    agent_id = Column(GUID(), ForeignKey("agents.id"), nullable=True)  # section 42 : nécessaire au résumé combiné d'équipe
 
     to_number = Column(String, nullable=False)
     body = Column(Text, nullable=False)

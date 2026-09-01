@@ -12,10 +12,14 @@ from app.models.whatsapp_log import WhatsAppLog
 
 
 class MockWhatsAppProvider(WhatsAppProvider):
-    def __init__(self, db: Session, organization_id):
+    def __init__(self, db: Session, organization_id, agent_id=None):
         self._db = db
         self._organization_id = organization_id
+        self._agent_id = agent_id
 
     def send_message(self, to_number: str, body: str) -> None:
-        self._db.add(WhatsAppLog(organization_id=self._organization_id, to_number=to_number, body=body, provider="mock"))
+        self._db.add(WhatsAppLog(
+            organization_id=self._organization_id, agent_id=self._agent_id,
+            to_number=to_number, body=body, provider="mock",
+        ))
         self._db.commit()

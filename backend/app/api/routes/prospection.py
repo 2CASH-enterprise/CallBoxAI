@@ -64,6 +64,7 @@ class SendWhatsAppRequest(BaseModel):
 def tool_send_whatsapp(
     payload: SendWhatsAppRequest,
     organization_id: uuid.UUID = Query(...),
+    agent_id: uuid.UUID | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -71,7 +72,7 @@ def tool_send_whatsapp(
     DIRECT pendant l'appel. Le contact est retrouvé (ou créé) par téléphone
     — même logique que les outils PMS/KYC (section 18).
     """
-    logger.info("Outil send_whatsapp appelé : org=%s guest_phone=%r", organization_id, payload.guest_phone)
+    logger.info("Outil send_whatsapp appelé : org=%s agent=%s guest_phone=%r", organization_id, agent_id, payload.guest_phone)
 
     contact = db.query(Contact).filter(
         Contact.organization_id == organization_id, Contact.phone == payload.guest_phone
@@ -84,7 +85,7 @@ def tool_send_whatsapp(
     try:
         from app.providers.whatsapp.mock import MockWhatsAppProvider
 
-        provider = MockWhatsAppProvider(db, organization_id)
+        provider = MockWhatsAppProvider(db, organization_id, agent_id)
         body = f"Bonjour{f' {payload.guest_name}' if payload.guest_name else ''}, voici l'information demandée suite à notre appel : {payload.content_summary}"
         provider.send_message(to_number=payload.guest_phone, body=body)
         sent = True

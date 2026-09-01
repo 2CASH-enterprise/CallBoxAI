@@ -8,6 +8,7 @@ import {
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, Agent, AgentRequest } from "@/lib/api";
 import { RetellTestCallWidget } from "@/components/RetellTestCallWidget";
+import { AgentTeamsSection } from "@/components/AgentTeamsSection";
 import { AGENT_TEMPLATES } from "@/lib/agentTemplates";
 import styles from "./agents.module.css";
 
@@ -180,6 +181,10 @@ export default function AgentsPage() {
                 })}
               </div>
             </div>
+          )}
+
+          {agents.length > 0 && currentOrg && (
+            <AgentTeamsSection organizationId={currentOrg.organization_id} agents={agents} onChange={load} />
           )}
 
           {agents.length === 0 ? (

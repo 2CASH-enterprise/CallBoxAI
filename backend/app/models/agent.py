@@ -83,6 +83,11 @@ class Agent(Base):
     whatsapp_enabled = Column(Boolean, default=False)
     meeting_booking_enabled = Column(Boolean, default=False)
 
+    # Équipe (section 40 — palier "Growth") : rattachement optionnel à un
+    # regroupement librement nommé par le client, uniquement pour la
+    # présentation combinée — aucune conséquence technique.
+    team_id = Column(GUID(), ForeignKey("agent_teams.id"), nullable=True)
+
     # Métier de l'agent (section 19/41) : adapte le VOCABULAIRE affiché de la
     # classification automatique ("Prospect tiède" n'a aucun sens pour un
     # client d'hôtel) — voir app.core.classification_labels. La logique

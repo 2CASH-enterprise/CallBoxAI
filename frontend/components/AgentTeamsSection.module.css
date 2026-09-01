@@ -1,0 +1,61 @@
+.wrap { margin-bottom: 32px; }
+.emptyWrap { margin-bottom: 24px; }
+
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+
+.createForm { display: flex; gap: 8px; margin-bottom: 16px; }
+.createForm input {
+  flex: 1;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.teamGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+.teamCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.teamHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.teamName { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 14.5px; }
+.renameRow { display: flex; align-items: center; gap: 6px; flex: 1; }
+.renameRow input { flex: 1; border: 1px solid var(--color-line); border-radius: var(--radius-sm); padding: 5px 8px; font-size: 13.5px; }
+.renameRow button { color: var(--color-signal); }
+
+.iconButton { color: var(--color-muted); padding: 2px; }
+.iconButton:hover { color: var(--color-ink); }
+
+.summaryRow { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+.summaryItem { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--color-muted); }
+.summaryItem strong { color: var(--color-ink); font-weight: 600; }
+.summaryHint { font-size: 10.5px; color: var(--color-muted); margin: 0 0 14px 0; }
+
+.members { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.memberChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg);
+  border-radius: 20px;
+  padding: 4px 6px 4px 10px;
+  font-size: 12px;
+}
+.memberChip button { color: var(--color-muted); display: flex; }
+.memberChip button:hover { color: var(--color-red); }
+.noMembers { font-size: 12px; color: var(--color-muted); font-style: italic; }
+
+.addSelect {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+}

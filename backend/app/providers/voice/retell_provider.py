@@ -199,7 +199,7 @@ def _build_kyc_tools(organization_id: str, agent_id: str, public_base_url: str) 
     ]
 
 
-def _build_whatsapp_tool(organization_id: str, public_base_url: str) -> dict:
+def _build_whatsapp_tool(organization_id: str, agent_id: str, public_base_url: str) -> dict:
     """
     Outil d'envoi WhatsApp (section 42) — commun à la prospection B2C et
     B2B : dès que le prospect montre de l'intérêt, l'agent envoie un
@@ -213,7 +213,7 @@ def _build_whatsapp_tool(organization_id: str, public_base_url: str) -> dict:
             "Envoie par WhatsApp un résumé, une brochure ou une offre au prospect. "
             "Utilise ceci dès que le prospect montre un intérêt réel pendant la conversation."
         ),
-        "url": f"{base}/prospection/tools/send-whatsapp?organization_id={organization_id}",
+        "url": f"{base}/prospection/tools/send-whatsapp?organization_id={organization_id}&agent_id={agent_id}",
         "method": "POST",
         "speak_after_execution": True,
         "args_at_root": True,
@@ -485,8 +485,8 @@ class RetellProvider(VoiceProvider):
             tools += _build_pms_tools(organization_id, public_base_url)
         if kyc_enabled and organization_id and callboxai_agent_id and public_base_url:
             tools += _build_kyc_tools(organization_id, callboxai_agent_id, public_base_url)
-        if whatsapp_enabled and organization_id and public_base_url:
-            tools.append(_build_whatsapp_tool(organization_id, public_base_url))
+        if whatsapp_enabled and organization_id and callboxai_agent_id and public_base_url:
+            tools.append(_build_whatsapp_tool(organization_id, callboxai_agent_id, public_base_url))
         if meeting_booking_enabled and organization_id and callboxai_agent_id and public_base_url:
             tools.append(_build_meeting_tool(organization_id, callboxai_agent_id, public_base_url))
         if ticketing_enabled and organization_id and public_base_url:

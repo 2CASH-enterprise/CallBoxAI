@@ -87,6 +87,7 @@ class AgentOut(BaseModel):
     source_template: str | None
     whatsapp_enabled: bool
     meeting_booking_enabled: bool
+    team_id: uuid.UUID | None
 
     class Config:
         from_attributes = True
