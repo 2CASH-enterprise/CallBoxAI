@@ -7,7 +7,7 @@ nécessitent un vrai moteur de facturation (sections 20-21, pas encore
 construit) ne sont pas affichés ici plutôt que d'être approximés ou inventés.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -336,3 +336,70 @@ def admin_update_agent(
         source_template=updated.source_template, whatsapp_enabled=updated.whatsapp_enabled,
         meeting_booking_enabled=updated.meeting_booking_enabled, retell_agent_id=updated.retell_agent_id,
     )
+
+
+# ---------- Suivi interne de marge (section 40) — JAMAIS exposé au client ----------
+# Coût réel (minutes payées à Retell/Twilio) face aux résultats produits
+# (leads/RDV pour les agents commerciaux) — sert uniquement au pilotage
+# interne de la rentabilité par agent, pas à la facturation du client.
+
+COMMERCIAL_CATEGORIES = {"prospection", "fidelisation"}
+
+
+class AgentMarginOut(BaseModel):
+    agent_id: uuid.UUID
+    agent_name: str
+    organization_id: uuid.UUID
+    organization_name: str
+    category: str
+    total_calls: int
+    total_minutes: int
+    real_cost_fcfa: float
+    is_commercial: bool
+    results_count: int | None  # nombre de leads/RDV produits — seulement pour les agents commerciaux
+    cost_per_result_fcfa: float | None
+
+
+@router.get("/margin-report", response_model=list[AgentMarginOut])
+def get_margin_report(
+    days: int = 30,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """
+    Coût réel en minutes face aux résultats produits, par agent — sur les
+    `days` derniers jours (30 par défaut). Réservé au Super Admin : jamais
+    exposé au client, qui paie un forfait "employé IA" à capacité, pas à
+    l'unité (section 40).
+    """
+    from app.models.call import Call
+    from app.core.config import settings as app_settings
+
+    since = datetime.utcnow() - timedelta(days=days)
+    rows = db.query(Agent, Organization).join(Organization, Agent.organization_id == Organization.id).all()
+
+    results = []
+    for agent, org in rows:
+        calls = db.query(Call).filter(Call.agent_id == agent.id, Call.started_at >= since).all()
+        total_calls = len(calls)
+        total_minutes = round(sum(c.duration_seconds or 0 for c in calls) / 60)
+        real_cost = round(total_minutes * app_settings.real_cost_per_minute_fcfa, 2)
+
+        is_commercial = agent.category in COMMERCIAL_CATEGORIES
+        results_count = None
+        cost_per_result = None
+        if is_commercial:
+            results_count = sum(1 for c in calls if c.qualification == "Prospect chaud")
+            if results_count > 0:
+                cost_per_result = round(real_cost / results_count, 2)
+
+        results.append(AgentMarginOut(
+            agent_id=agent.id, agent_name=agent.name, organization_id=org.id, organization_name=org.name,
+            category=agent.category, total_calls=total_calls, total_minutes=total_minutes,
+            real_cost_fcfa=real_cost, is_commercial=is_commercial,
+            results_count=results_count, cost_per_result_fcfa=cost_per_result,
+        ))
+
+    # Les agents avec le plus d'activité en premier — les plus utiles à surveiller
+    results.sort(key=lambda r: r.total_minutes, reverse=True)
+    return results

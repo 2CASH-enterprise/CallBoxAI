@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Bot, Phone, Megaphone, BarChart3,
-  BookOpen, Users, Globe, Network, Calendar, TrendingDown,
+  BookOpen, Users, Globe, Network, Calendar, TrendingDown, TrendingUp,
   MessageSquare, ClipboardList, LifeBuoy, MessageCircle, Sunrise, Inbox, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -84,6 +84,7 @@ export function Sidebar() {
   const pilotageLinks: NavItem[] = [
     ...(user?.is_super_admin ? [{ href: "/admin", label: "Vue plateforme", icon: Globe }] : []),
     ...(user?.is_super_admin ? [{ href: "/admin/agent-requests", label: "Demandes d'agents", icon: Inbox }] : []),
+    ...(user?.is_super_admin ? [{ href: "/admin/margin", label: "Suivi de marge", icon: TrendingUp }] : []),
     ...(user?.is_super_admin || user?.distributor_id
       ? [{ href: "/distributors", label: "Distributeurs", icon: Network }]
       : []),

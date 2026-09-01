@@ -136,6 +136,20 @@ export interface AdminAgent extends Agent {
   organization_name: string;
 }
 
+export interface AgentMargin {
+  agent_id: string;
+  agent_name: string;
+  organization_id: string;
+  organization_name: string;
+  category: string;
+  total_calls: number;
+  total_minutes: number;
+  real_cost_fcfa: number;
+  is_commercial: boolean;
+  results_count: number | null;
+  cost_per_result_fcfa: number | null;
+}
+
 export interface Ticket {
   id: string;
   organization_id: string;
@@ -568,6 +582,7 @@ export const api = {
     }),
 
   listAllAgents: () => request<AdminAgent[]>("/admin/agents"),
+  getMarginReport: (days = 30) => request<AgentMargin[]>(`/admin/margin-report?days=${days}`),
 
   listAgentTeams: (organizationId: string) => request<AgentTeam[]>("/agent-teams", { organizationId }),
   createAgentTeam: (organizationId: string, name: string) =>

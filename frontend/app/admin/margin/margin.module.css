@@ -1,0 +1,49 @@
+.header { margin-bottom: 8px; }
+.title { font-family: var(--font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.subtitle { font-size: 13px; color: var(--color-muted); margin-bottom: 20px; max-width: 640px; }
+
+.table {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  border-collapse: collapse;
+  overflow: hidden;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-line);
+}
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-line);
+}
+.table tr:last-child td { border-bottom: none; }
+
+.orgName { color: var(--color-muted); font-size: 12px; }
+.agentName { font-weight: 500; }
+.categoryTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.costCell { font-family: var(--font-mono); }
+.warningRow { background: var(--color-red-soft); }
+.warningBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-red);
+  font-size: 11px;
+  font-weight: 500;
+}

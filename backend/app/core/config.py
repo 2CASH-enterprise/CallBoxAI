@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     retell_default_llm_model: str = "gpt-4o-mini"
     retell_default_voice_id: str = "cartesia-Emma"
 
+    # Coût réel par minute d'appel (section 40 — suivi interne de marge,
+    # JAMAIS exposé au client) : ce que VOUS payez à Retell/Twilio, distinct
+    # du tarif "employé IA" facturé au client. Valeur par défaut indicative,
+    # à ajuster selon vos tarifs réels négociés.
+    real_cost_per_minute_fcfa: float = 60.0
+
     # URL publique de CE backend (ex. "http://178.104.56.200:8010"), utilisée
     # pour que Retell puisse appeler nos "outils" (function calling) EN DIRECT
     # pendant un vrai appel (section 16 — intégration PMS en temps réel).
