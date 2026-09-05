@@ -7,12 +7,15 @@ pas encore branché — voir section 40 et le docker-compose.yml). Le
 comportement métier (statuts, retry, horaires) est le même ; seul le
 déclenchement change une fois Celery en place.
 """
+import logging
 import random
 import uuid
 from datetime import datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -20,6 +23,7 @@ from app.core.database import get_db
 from app.core.security import require_organization_access
 from app.core.call_pipeline import execute_mock_call
 from app.core.contacts_import import import_contacts_from_csv_text
+from app.core.compliance import check_compliance
 from app.models.campaign import Campaign, CampaignTarget
 from app.models.contact import Contact
 from app.models.agent import Agent
@@ -57,6 +61,7 @@ class CampaignCreate(BaseModel):
     schedule_end: str = "19:00"
     max_attempts: int = 3
     max_follow_ups: int = 2
+    target_market: str | None = None
 
 
 class CampaignOut(BaseModel):
@@ -69,6 +74,7 @@ class CampaignOut(BaseModel):
     schedule_end: str
     max_attempts: int
     max_follow_ups: int
+    target_market: str | None
     created_at: datetime
     started_at: datetime | None
 
@@ -100,6 +106,7 @@ class BatchResult(BaseModel):
     no_answer: int
     failed: int
     follow_up_scheduled: int
+    blocked_compliance: int = 0
     message: str | None = None
 
 
@@ -292,9 +299,23 @@ def run_batch(
     no_answer_count = 0
     failed_count = 0
     follow_up_count_total = 0
+    blocked_compliance_count = 0
 
     for target in targets:
         contact = db.query(Contact).filter(Contact.id == target.contact_id).first()
+
+        # Compliance Check (section 42/43) : verrou AVANT de composer le
+        # numéro — ni consommé comme tentative, ni marqué en échec, juste
+        # laissé "pending" pour être retenté plus tard (les horaires se
+        # résolvent d'eux-mêmes ; le consentement, dès qu'il sera enregistré).
+        allowed, reason = check_compliance(
+            db, organization_id, campaign.target_market, agent, contact.id, now,
+        )
+        if not allowed:
+            logger.info("Contact %s bloqué par le Compliance Check : %s", contact.id, reason)
+            blocked_compliance_count += 1
+            continue
+
         target.attempts += 1
 
         # Simulation d'un résultat d'appel varié (mode Mock, section 40.3) :
@@ -346,5 +367,6 @@ def run_batch(
         no_answer=no_answer_count,
         failed=failed_count,
         follow_up_scheduled=follow_up_count_total,
+        blocked_compliance=blocked_compliance_count,
         message="Aucun contact en attente." if not targets else None,
     )

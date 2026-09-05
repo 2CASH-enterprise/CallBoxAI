@@ -24,6 +24,12 @@ class Campaign(Base):
     schedule_start = Column(String, default="08:00")
     schedule_end = Column(String, default="19:00")
 
+    # Marché ciblé (section 42/43 — brique de compliance) : détermine les
+    # règles légales à appliquer automatiquement (horaires de démarchage,
+    # obligation de consentement B2C...) — voir app.core.compliance.
+    # None = aucun profil légal spécifique appliqué (marché non couvert).
+    target_market = Column(String, nullable=True)
+
     # Nombre de tentatives max par contact avant abandon définitif (retry, section 13)
     max_attempts = Column(Integer, default=3)
 
