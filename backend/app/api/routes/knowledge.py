@@ -181,11 +181,15 @@ class OrganizationSourcesOut(BaseModel):
     website_url: str | None
     social_media_urls: str | None
     documents_count: int
+    facebook_page_id: str | None
+    facebook_page_access_token: str | None
 
 
 class OrganizationSourcesUpdate(BaseModel):
     website_url: str | None = None
     social_media_urls: str | None = None  # une URL par ligne
+    facebook_page_id: str | None = None
+    facebook_page_access_token: str | None = None
 
 
 @router.get("/sources", response_model=OrganizationSourcesOut)
@@ -199,6 +203,8 @@ def get_organization_sources(
         website_url=organization.website_url if organization else None,
         social_media_urls=organization.social_media_urls if organization else None,
         documents_count=documents_count,
+        facebook_page_id=organization.facebook_page_id if organization else None,
+        facebook_page_access_token=organization.facebook_page_access_token if organization else None,
     )
 
 
@@ -226,6 +232,10 @@ def update_organization_sources(
         organization.social_media_urls = payload.social_media_urls or None
         if payload.social_media_urls:
             new_urls.extend([u.strip() for u in payload.social_media_urls.splitlines() if u.strip()])
+    if payload.facebook_page_id is not None:
+        organization.facebook_page_id = payload.facebook_page_id or None
+    if payload.facebook_page_access_token is not None:
+        organization.facebook_page_access_token = payload.facebook_page_access_token or None
 
     db.commit()
 
@@ -236,4 +246,6 @@ def update_organization_sources(
     return OrganizationSourcesOut(
         website_url=organization.website_url, social_media_urls=organization.social_media_urls,
         documents_count=documents_count,
+        facebook_page_id=organization.facebook_page_id,
+        facebook_page_access_token=organization.facebook_page_access_token,
     )

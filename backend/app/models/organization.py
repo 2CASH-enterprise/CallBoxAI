@@ -29,6 +29,12 @@ class Organization(Base):
     website_url = Column(String, nullable=True)
     social_media_urls = Column(String, nullable=True)  # une URL par ligne
 
+    # Facebook Lead Ads (section 42/43 — brique de compliance, point 3/3) :
+    # identifie quelle organisation reçoit un lead entrant, et permet de
+    # récupérer le détail complet du formulaire via l'API Graph.
+    facebook_page_id = Column(String, nullable=True)
+    facebook_page_access_token = Column(String, nullable=True)
+
     # Base de connaissances Retell (section 10/42) : UNE base par
     # organisation, partagée par tous ses agents — créée au premier
     # document/source ajouté, puis mise à jour de façon incrémentale.

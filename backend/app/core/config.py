@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # à ajuster selon vos tarifs réels négociés.
     real_cost_per_minute_fcfa: float = 60.0
 
+    # Facebook Lead Ads (section 42/43) : jeton de vérification du webhook
+    # (choisi par vous, communiqué à Meta lors de l'abonnement) et secret de
+    # l'app Meta (pour vérifier l'authenticité des notifications reçues).
+    facebook_webhook_verify_token: str = ""
+    facebook_app_secret: str = ""
+
     # URL publique de CE backend (ex. "http://178.104.56.200:8010"), utilisée
     # pour que Retell puisse appeler nos "outils" (function calling) EN DIRECT
     # pendant un vrai appel (section 16 — intégration PMS en temps réel).
