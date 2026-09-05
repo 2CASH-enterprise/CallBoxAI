@@ -18,6 +18,7 @@ from app.models.demo_call_log import DemoCallLog
 from app.models.agent_request import AgentRequest
 from app.models.whatsapp_log import WhatsAppLog
 from app.models.agent_team import AgentTeam
+from app.models.consent_record import ConsentRecord
 
 __all__ = [
     "Organization",
@@ -44,4 +45,5 @@ __all__ = [
     "AgentRequest",
     "WhatsAppLog",
     "AgentTeam",
+    "ConsentRecord",
 ]
