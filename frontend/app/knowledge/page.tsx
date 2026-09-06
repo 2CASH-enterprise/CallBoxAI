@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useOrganization } from "@/lib/OrganizationContext";
 import { api, KnowledgeDocument, KnowledgeSearchResult, OrganizationSources } from "@/lib/api";
 import styles from "./knowledge.module.css";
@@ -19,8 +20,10 @@ const OBJECTIONS_TEMPLATE = {
 
 export default function KnowledgePage() {
   const { currentOrg } = useOrganization();
+  const searchParams = useSearchParams();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectingFacebook, setConnectingFacebook] = useState(false);
 
   const [sources, setSources] = useState<OrganizationSources | null>(null);
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -53,6 +56,28 @@ export default function KnowledgePage() {
   };
 
   useEffect(load, [currentOrg]);
+
+  // Après retour du flux OAuth Facebook (section 42/43) : recharge les
+  // sources pour afficher le vrai statut, puis nettoie l'URL pour éviter
+  // qu'un rafraîchissement ne redéclenche la même redirection.
+  useEffect(() => {
+    if (searchParams.get("facebook_connected") || searchParams.get("facebook_error")) {
+      load();
+      window.history.replaceState({}, "", "/knowledge");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function handleConnectFacebook() {
+    if (!currentOrg) return;
+    setConnectingFacebook(true);
+    try {
+      const { authorize_url } = await api.getFacebookAuthorizeUrl(currentOrg.organization_id);
+      window.location.href = authorize_url;
+    } finally {
+      setConnectingFacebook(false);
+    }
+  }
 
   async function handleSaveSources(e: React.FormEvent) {
     e.preventDefault();
@@ -174,37 +199,59 @@ export default function KnowledgePage() {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>Facebook Lead Ads (prospection B2C)</div>
         <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 12 }}>
-          Renseignez ces deux identifiants pour que les leads de vos publicités Facebook (avec consentement
-          explicite au formulaire) soient automatiquement transmis à vos agents commerciaux. L'abonnement au
-          webhook se fait automatiquement, aucune manipulation supplémentaire de votre part sur Facebook.
+          Connectez votre page Facebook en un clic pour que les leads de vos publicités (avec consentement
+          explicite au formulaire) soient automatiquement transmis à vos agents commerciaux.
         </p>
-        <form onSubmit={handleSaveSources} className={styles.sourcesForm}>
-          <input
-            placeholder="Identifiant de la page Facebook (Page ID)"
-            value={facebookPageId}
-            onChange={(e) => setFacebookPageId(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Jeton d'accès de la page (Page Access Token)"
-            value={facebookPageAccessToken}
-            onChange={(e) => setFacebookPageAccessToken(e.target.value)}
-          />
-          <button type="submit" className="btn btn-primary" disabled={savingSources}>
-            {savingSources ? "Enregistrement…" : "Enregistrer"}
+
+        {searchParams.get("facebook_error") && (
+          <p style={{ fontSize: 12.5, color: "var(--color-red)", marginBottom: 12 }}>
+            La connexion a échoué — réessayez, ou contactez-nous si le problème persiste.
+          </p>
+        )}
+
+        {sources?.facebook_page_id ? (
+          <div>
+            <p style={{ fontSize: 13, color: "var(--color-signal)", marginBottom: 8 }}>
+              ✓ Page Facebook connectée
+              {sources.facebook_subscription_status === "ok" && " — abonnement au webhook confirmé."}
+            </p>
+            <button className="btn btn-ghost" onClick={handleConnectFacebook} disabled={connectingFacebook}>
+              {connectingFacebook ? "Redirection…" : "Reconnecter une autre page"}
+            </button>
+          </div>
+        ) : (
+          <button className="btn btn-primary" onClick={handleConnectFacebook} disabled={connectingFacebook}>
+            {connectingFacebook ? "Redirection…" : "Connecter ma page Facebook"}
           </button>
-        </form>
-        {sources?.facebook_subscription_status === "ok" && (
-          <p style={{ fontSize: 12.5, color: "var(--color-signal)", marginTop: 12 }}>
-            ✓ Abonnement au webhook confirmé — vos prochains leads Facebook seront reçus automatiquement.
-          </p>
         )}
-        {sources?.facebook_subscription_status === "failed" && (
-          <p style={{ fontSize: 12.5, color: "var(--color-red)", marginTop: 12 }}>
-            L'abonnement automatique a échoué — vérifiez l'identifiant de page et le jeton d'accès (doit avoir les
-            permissions pages_manage_metadata et leads_retrieval).
-          </p>
-        )}
+
+        <details style={{ marginTop: 16 }}>
+          <summary style={{ fontSize: 12, color: "var(--color-muted)", cursor: "pointer" }}>
+            Configuration manuelle (avancé)
+          </summary>
+          <form onSubmit={handleSaveSources} className={styles.sourcesForm} style={{ marginTop: 10 }}>
+            <input
+              placeholder="Identifiant de la page Facebook (Page ID)"
+              value={facebookPageId}
+              onChange={(e) => setFacebookPageId(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Jeton d'accès de la page (Page Access Token)"
+              value={facebookPageAccessToken}
+              onChange={(e) => setFacebookPageAccessToken(e.target.value)}
+            />
+            <button type="submit" className="btn btn-ghost" disabled={savingSources}>
+              {savingSources ? "Enregistrement…" : "Enregistrer manuellement"}
+            </button>
+          </form>
+          {sources?.facebook_subscription_status === "failed" && (
+            <p style={{ fontSize: 12.5, color: "var(--color-red)", marginTop: 12 }}>
+              L'abonnement automatique a échoué — vérifiez l'identifiant de page et le jeton d'accès (doit avoir les
+              permissions pages_manage_metadata et leads_retrieval).
+            </p>
+          )}
+        </details>
       </div>
 
       <div className={styles.section}>

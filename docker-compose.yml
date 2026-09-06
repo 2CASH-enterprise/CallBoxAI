@@ -68,6 +68,11 @@ services:
       # l'introduction de l'intégration Facebook Lead Ads, corrigé directement.
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
       FACEBOOK_WEBHOOK_VERIFY_TOKEN: ${FACEBOOK_WEBHOOK_VERIFY_TOKEN:-}
+      # Ajoutées proactivement cette fois (leçon tirée des deux oublis
+      # précédents sur ce même fichier) : nécessaires au flux OAuth
+      # "Connecter avec Facebook" (section 42/43).
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-}
       # Même bug que PUBLIC_BASE_URL à l'origine : oublié à l'introduction
       # de l'appel de démo public (section 1), corrigé directement cette fois.
       DEMO_AGENT_RETELL_ID: ${DEMO_AGENT_RETELL_ID:-}

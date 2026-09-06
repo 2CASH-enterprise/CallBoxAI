@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # l'app Meta (pour vérifier l'authenticité des notifications reçues).
     facebook_webhook_verify_token: str = ""
     facebook_app_secret: str = ""
+    facebook_app_id: str = ""
+
+    # Adresse publique du FRONTEND (ex. "https://app.callbox-ai.com") — utilisée
+    # pour rediriger le navigateur du client à la fin du flux OAuth Facebook,
+    # distincte de public_base_url qui pointe vers le backend.
+    frontend_base_url: str = ""
 
     # URL publique de CE backend (ex. "http://178.104.56.200:8010"), utilisée
     # pour que Retell puisse appeler nos "outils" (function calling) EN DIRECT

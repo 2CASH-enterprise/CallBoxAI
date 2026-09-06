@@ -765,6 +765,8 @@ export const api = {
       organizationId,
       body: JSON.stringify(data),
     }),
+  getFacebookAuthorizeUrl: (organizationId: string) =>
+    request<{ authorize_url: string }>("/oauth/facebook/authorize", { organizationId }),
 
   listContacts: (organizationId: string) =>
     request<Contact[]>("/contacts", { organizationId }),
