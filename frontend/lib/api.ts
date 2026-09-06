@@ -315,6 +315,7 @@ export interface OrganizationSources {
   facebook_page_id: string | null;
   facebook_page_access_token: string | null;
   facebook_subscription_status: string | null;
+  facebook_leads_campaign_id: string | null;
 }
 
 export interface KnowledgeSearchResult {
@@ -759,7 +760,7 @@ export const api = {
     }),
   getOrganizationSources: (organizationId: string) =>
     request<OrganizationSources>("/knowledge/sources", { organizationId }),
-  updateOrganizationSources: (organizationId: string, data: { website_url?: string; social_media_urls?: string; facebook_page_id?: string; facebook_page_access_token?: string }) =>
+  updateOrganizationSources: (organizationId: string, data: { website_url?: string; social_media_urls?: string; facebook_page_id?: string; facebook_page_access_token?: string; facebook_leads_campaign_id?: string }) =>
     request<OrganizationSources>("/knowledge/sources", {
       method: "PATCH",
       organizationId,

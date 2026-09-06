@@ -258,6 +258,58 @@ def pause_campaign(
     return campaign
 
 
+def _process_single_target(db, organization_id, campaign, agent, target, contact, now) -> str:
+    """
+    Traite UNE cible de campagne — extrait de run_batch (section 13/42/43)
+    pour être réutilisable aussi bien par un lot programmé que par un appel
+    immédiat déclenché par un lead Facebook. Retourne le résultat :
+    "blocked", "completed", "follow_up", "failed", ou "no_answer".
+    """
+    allowed, reason = check_compliance(
+        db, organization_id, campaign.target_market, agent, contact.id, now,
+    )
+    if not allowed:
+        logger.info("Contact %s bloqué par le Compliance Check : %s", contact.id, reason)
+        return "blocked"
+
+    target.attempts += 1
+
+    # Simulation d'un résultat d'appel varié (mode Mock, section 40.3) :
+    # 70% répondu, 20% pas de réponse (retry possible), 10% échec.
+    outcome = random.choices(["completed", "no_answer", "failed"], weights=[70, 20, 10])[0]
+
+    if outcome == "completed":
+        call = execute_mock_call(
+            db=db,
+            organization_id=organization_id,
+            agent=agent,
+            to_number=contact.phone,
+            from_number="+221780000000",
+            telephony_provider=telephony_provider,
+            voice_provider=voice_provider,
+            embedding_provider=embedding_provider,
+            analytics_provider=analytics_provider,
+            direction="outbound",
+            contact_id=contact.id,
+        )
+        target.call_id = call.id
+
+        if _needs_follow_up(call.qualification, call.action_taken, target.follow_up_count, campaign.max_follow_ups):
+            target.follow_up_count += 1
+            target.status = "pending"
+            target.next_attempt_at = now + timedelta(days=FOLLOW_UP_DELAY_DAYS)
+            return "follow_up"
+        else:
+            target.status = "completed"
+            return "completed"
+    elif target.attempts >= campaign.max_attempts:
+        target.status = "failed"
+        return "failed"
+    else:
+        target.status = "pending"  # retenté au prochain lot (retry, section 13)
+        return "no_answer"
+
+
 @router.post("/campaigns/{campaign_id}/run-batch", response_model=BatchResult)
 def run_batch(
     campaign_id: uuid.UUID,
@@ -304,53 +356,16 @@ def run_batch(
     for target in targets:
         contact = db.query(Contact).filter(Contact.id == target.contact_id).first()
 
-        # Compliance Check (section 42/43) : verrou AVANT de composer le
-        # numéro — ni consommé comme tentative, ni marqué en échec, juste
-        # laissé "pending" pour être retenté plus tard (les horaires se
-        # résolvent d'eux-mêmes ; le consentement, dès qu'il sera enregistré).
-        allowed, reason = check_compliance(
-            db, organization_id, campaign.target_market, agent, contact.id, now,
-        )
-        if not allowed:
-            logger.info("Contact %s bloqué par le Compliance Check : %s", contact.id, reason)
+        result = _process_single_target(db, organization_id, campaign, agent, target, contact, now)
+        if result == "blocked":
             blocked_compliance_count += 1
-            continue
-
-        target.attempts += 1
-
-        # Simulation d'un résultat d'appel varié (mode Mock, section 40.3) :
-        # 70% répondu, 20% pas de réponse (retry possible), 10% échec.
-        outcome = random.choices(["completed", "no_answer", "failed"], weights=[70, 20, 10])[0]
-
-        if outcome == "completed":
-            call = execute_mock_call(
-                db=db,
-                organization_id=organization_id,
-                agent=agent,
-                to_number=contact.phone,
-                from_number="+221780000000",
-                telephony_provider=telephony_provider,
-                voice_provider=voice_provider,
-                embedding_provider=embedding_provider,
-                analytics_provider=analytics_provider,
-                direction="outbound",
-                contact_id=contact.id,
-            )
-            target.call_id = call.id
+        elif result == "completed":
             completed_count += 1
-
-            if _needs_follow_up(call.qualification, call.action_taken, target.follow_up_count, campaign.max_follow_ups):
-                target.follow_up_count += 1
-                target.status = "pending"
-                target.next_attempt_at = now + timedelta(days=FOLLOW_UP_DELAY_DAYS)
-                follow_up_count_total += 1
-            else:
-                target.status = "completed"
-        elif target.attempts >= campaign.max_attempts:
-            target.status = "failed"
+        elif result == "follow_up":
+            follow_up_count_total += 1
+        elif result == "failed":
             failed_count += 1
-        else:
-            target.status = "pending"  # retenté au prochain lot (retry, section 13)
+        elif result == "no_answer":
             no_answer_count += 1
 
     remaining_pending = db.query(CampaignTarget).filter(
@@ -370,3 +385,48 @@ def run_batch(
         blocked_compliance=blocked_compliance_count,
         message="Aucun contact en attente." if not targets else None,
     )
+
+
+def enroll_lead_in_designated_campaign(db, organization, contact) -> None:
+    """
+    Inscrit automatiquement un lead (ex. Facebook Lead Ads, section 42/43)
+    dans la campagne que le client a désignée pour les recevoir, et tente
+    un appel IMMÉDIAT si la campagne est active et dans les horaires
+    autorisés — sinon, le lead reste simplement capturé (contact + preuve
+    de consentement déjà enregistrés ailleurs), en attente que la campagne
+    soit démarrée ou que les horaires légaux s'ouvrent.
+
+    Résilience (section 29) : sans campagne désignée, ne fait rien — ne
+    bloque jamais la capture du lead lui-même.
+    """
+    if not organization.facebook_leads_campaign_id:
+        return
+
+    campaign = db.query(Campaign).filter(Campaign.id == organization.facebook_leads_campaign_id).first()
+    if not campaign:
+        logger.warning("Campagne désignée introuvable pour l'organisation %s", organization.id)
+        return
+
+    existing_target = db.query(CampaignTarget).filter(
+        CampaignTarget.campaign_id == campaign.id, CampaignTarget.contact_id == contact.id
+    ).first()
+    if existing_target:
+        return  # déjà présent dans cette campagne, on ne duplique jamais
+
+    target = CampaignTarget(campaign_id=campaign.id, contact_id=contact.id, status="pending")
+    db.add(target)
+    db.flush()
+
+    if campaign.status != "running" or not within_schedule(campaign):
+        db.commit()
+        logger.info(
+            "Lead %s inscrit dans la campagne %s, appel différé (campagne inactive ou hors horaires).",
+            contact.id, campaign.id,
+        )
+        return
+
+    agent = db.query(Agent).filter(Agent.id == campaign.agent_id).first()
+    now = datetime.utcnow()
+    result = _process_single_target(db, organization.id, campaign, agent, target, contact, now)
+    db.commit()
+    logger.info("Lead %s : appel immédiat tenté, résultat = %s", contact.id, result)

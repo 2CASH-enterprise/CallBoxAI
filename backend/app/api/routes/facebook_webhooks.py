@@ -131,3 +131,13 @@ def _record_lead_as_consent(db, organization: Organization, change_value: dict, 
     ))
     db.commit()
     logger.info("Lead Facebook enregistré : contact=%s org=%s", contact.id, organization.id)
+
+    # Inscription automatique à la campagne désignée + appel au plus vite
+    # (section 42/43) — résilient : un échec ici ne doit jamais remettre en
+    # cause la capture du lead et du consentement, déjà actée ci-dessus.
+    try:
+        from app.api.routes.campaigns import enroll_lead_in_designated_campaign
+
+        enroll_lead_in_designated_campaign(db, organization, contact)
+    except Exception:
+        logger.exception("Échec de l'inscription automatique du lead %s à la campagne désignée", contact.id)

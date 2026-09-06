@@ -35,6 +35,13 @@ class Organization(Base):
     facebook_page_id = Column(String, nullable=True)
     facebook_page_access_token = Column(String, nullable=True)
 
+    # Campagne désignée pour recevoir automatiquement les leads Facebook
+    # (section 42/43) : un lead capturé rejoint cette campagne et un appel
+    # est tenté au plus vite, dans le respect du Compliance Check — si la
+    # campagne n'est pas active, le lead est quand même capturé (contact +
+    # consentement), simplement pas encore appelé.
+    facebook_leads_campaign_id = Column(GUID(), ForeignKey("campaigns.id"), nullable=True)
+
     # Base de connaissances Retell (section 10/42) : UNE base par
     # organisation, partagée par tous ses agents — créée au premier
     # document/source ajouté, puis mise à jour de façon incrémentale.

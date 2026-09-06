@@ -187,6 +187,7 @@ class OrganizationSourcesOut(BaseModel):
     facebook_page_id: str | None
     facebook_page_access_token: str | None
     facebook_subscription_status: str | None = None  # "ok" | "failed" | None (non tenté)
+    facebook_leads_campaign_id: uuid.UUID | None = None
 
 
 class OrganizationSourcesUpdate(BaseModel):
@@ -194,6 +195,7 @@ class OrganizationSourcesUpdate(BaseModel):
     social_media_urls: str | None = None  # une URL par ligne
     facebook_page_id: str | None = None
     facebook_page_access_token: str | None = None
+    facebook_leads_campaign_id: uuid.UUID | None = None
 
 
 @router.get("/sources", response_model=OrganizationSourcesOut)
@@ -209,6 +211,7 @@ def get_organization_sources(
         documents_count=documents_count,
         facebook_page_id=organization.facebook_page_id if organization else None,
         facebook_page_access_token=organization.facebook_page_access_token if organization else None,
+        facebook_leads_campaign_id=organization.facebook_leads_campaign_id if organization else None,
     )
 
 
@@ -240,6 +243,8 @@ def update_organization_sources(
         organization.facebook_page_id = payload.facebook_page_id or None
     if payload.facebook_page_access_token is not None:
         organization.facebook_page_access_token = payload.facebook_page_access_token or None
+    if payload.facebook_leads_campaign_id is not None:
+        organization.facebook_leads_campaign_id = payload.facebook_leads_campaign_id
 
     facebook_subscription_status = None
     if organization.facebook_page_id and organization.facebook_page_access_token:
@@ -266,4 +271,5 @@ def update_organization_sources(
         facebook_page_id=organization.facebook_page_id,
         facebook_page_access_token=organization.facebook_page_access_token,
         facebook_subscription_status=facebook_subscription_status,
+        facebook_leads_campaign_id=organization.facebook_leads_campaign_id,
     )

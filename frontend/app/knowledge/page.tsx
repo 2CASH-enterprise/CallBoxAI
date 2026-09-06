@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrganization } from "@/lib/OrganizationContext";
-import { api, KnowledgeDocument, KnowledgeSearchResult, OrganizationSources } from "@/lib/api";
+import { api, KnowledgeDocument, KnowledgeSearchResult, OrganizationSources, Campaign } from "@/lib/api";
 import styles from "./knowledge.module.css";
 
 const OBJECTIONS_TEMPLATE = {
@@ -30,6 +30,8 @@ export default function KnowledgePage() {
   const [socialMediaUrls, setSocialMediaUrls] = useState("");
   const [facebookPageId, setFacebookPageId] = useState("");
   const [facebookPageAccessToken, setFacebookPageAccessToken] = useState("");
+  const [facebookLeadsCampaignId, setFacebookLeadsCampaignId] = useState("");
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [savingSources, setSavingSources] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,12 +48,14 @@ export default function KnowledgePage() {
     if (!currentOrg) return;
     setLoading(true);
     api.listKnowledgeDocuments(currentOrg.organization_id).then(setDocuments).finally(() => setLoading(false));
+    api.listCampaigns(currentOrg.organization_id).then(setCampaigns);
     api.getOrganizationSources(currentOrg.organization_id).then((s) => {
       setSources(s);
       setWebsiteUrl(s.website_url || "");
       setSocialMediaUrls(s.social_media_urls || "");
       setFacebookPageId(s.facebook_page_id || "");
       setFacebookPageAccessToken(s.facebook_page_access_token || "");
+      setFacebookLeadsCampaignId(s.facebook_leads_campaign_id || "");
     });
   };
 
@@ -89,6 +93,7 @@ export default function KnowledgePage() {
         social_media_urls: socialMediaUrls.trim(),
         facebook_page_id: facebookPageId.trim(),
         facebook_page_access_token: facebookPageAccessToken.trim(),
+        facebook_leads_campaign_id: facebookLeadsCampaignId || undefined,
       });
       setSources(updated);
     } finally {
@@ -218,6 +223,36 @@ export default function KnowledgePage() {
             <button className="btn btn-ghost" onClick={handleConnectFacebook} disabled={connectingFacebook}>
               {connectingFacebook ? "Redirection…" : "Reconnecter une autre page"}
             </button>
+
+            <div style={{ marginTop: 16 }}>
+              <label style={{ fontSize: 13, display: "block", marginBottom: 6 }}>
+                Appeler automatiquement chaque nouveau lead via la campagne :
+              </label>
+              <select
+                value={facebookLeadsCampaignId}
+                onChange={async (e) => {
+                  setFacebookLeadsCampaignId(e.target.value);
+                  if (currentOrg) {
+                    const updated = await api.updateOrganizationSources(currentOrg.organization_id, {
+                      facebook_leads_campaign_id: e.target.value,
+                    });
+                    setSources(updated);
+                  }
+                }}
+                style={{
+                  border: "1px solid var(--color-line)", borderRadius: "var(--radius-sm)",
+                  padding: "8px 10px", fontSize: 13, maxWidth: 360, width: "100%",
+                }}
+              >
+                <option value="">Aucune — capturer sans appeler automatiquement</option>
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 6 }}>
+                Si la campagne n'est pas en cours, le lead est capturé mais l'appel attend qu'elle soit démarrée.
+              </p>
+            </div>
           </div>
         ) : (
           <button className="btn btn-primary" onClick={handleConnectFacebook} disabled={connectingFacebook}>
