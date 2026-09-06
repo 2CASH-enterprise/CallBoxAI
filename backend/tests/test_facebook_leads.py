@@ -156,12 +156,57 @@ def test_lead_reuses_existing_contact_by_phone(client, db_session):
 
 def test_can_configure_facebook_page_via_sources_endpoint(client):
     headers = setup_org(client)
-    response = client.patch(
-        "/knowledge/sources",
-        json={"facebook_page_id": "123456", "facebook_page_access_token": "token_secret"},
-        headers=headers,
-    )
+    with patch("app.providers.leads.facebook.subscribe_page_to_leadgen_webhook", return_value=True):
+        response = client.patch(
+            "/knowledge/sources",
+            json={"facebook_page_id": "123456", "facebook_page_access_token": "token_secret"},
+            headers=headers,
+        )
     assert response.json()["facebook_page_id"] == "123456"
 
     sources = client.get("/knowledge/sources", headers=headers).json()
     assert sources["facebook_page_id"] == "123456"
+
+
+# ---------- Abonnement automatique au webhook (évite au client de le faire lui-même) ----------
+
+def test_saving_facebook_credentials_triggers_automatic_subscription(client):
+    headers = setup_org(client)
+    with patch("app.providers.leads.facebook.subscribe_page_to_leadgen_webhook", return_value=True) as mock_subscribe:
+        response = client.patch(
+            "/knowledge/sources",
+            json={"facebook_page_id": "123456", "facebook_page_access_token": "token_secret"},
+            headers=headers,
+        )
+
+    mock_subscribe.assert_called_once_with("123456", "token_secret")
+    assert response.json()["facebook_subscription_status"] == "ok"
+    assert response.json()["facebook_page_id"] == "123456"
+
+
+def test_subscription_failure_never_blocks_saving_credentials(client):
+    """Résilience (section 29) : un échec d'abonnement Meta ne doit jamais empêcher l'enregistrement local."""
+    headers = setup_org(client)
+    with patch("app.providers.leads.facebook.subscribe_page_to_leadgen_webhook", side_effect=Exception("Jeton invalide")):
+        response = client.patch(
+            "/knowledge/sources",
+            json={"facebook_page_id": "123456", "facebook_page_access_token": "mauvais_jeton"},
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["facebook_subscription_status"] == "failed"
+    assert response.json()["facebook_page_id"] == "123456"  # enregistré quand même
+
+
+def test_no_subscription_attempted_without_both_fields(client):
+    headers = setup_org(client)
+    with patch("app.providers.leads.facebook.subscribe_page_to_leadgen_webhook") as mock_subscribe:
+        response = client.patch(
+            "/knowledge/sources",
+            json={"facebook_page_id": "123456"},  # jeton d'accès manquant
+            headers=headers,
+        )
+
+    mock_subscribe.assert_not_called()
+    assert response.json()["facebook_subscription_status"] is None

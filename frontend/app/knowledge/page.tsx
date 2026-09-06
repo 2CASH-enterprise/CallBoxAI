@@ -25,6 +25,8 @@ export default function KnowledgePage() {
   const [sources, setSources] = useState<OrganizationSources | null>(null);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [socialMediaUrls, setSocialMediaUrls] = useState("");
+  const [facebookPageId, setFacebookPageId] = useState("");
+  const [facebookPageAccessToken, setFacebookPageAccessToken] = useState("");
   const [savingSources, setSavingSources] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,6 +47,8 @@ export default function KnowledgePage() {
       setSources(s);
       setWebsiteUrl(s.website_url || "");
       setSocialMediaUrls(s.social_media_urls || "");
+      setFacebookPageId(s.facebook_page_id || "");
+      setFacebookPageAccessToken(s.facebook_page_access_token || "");
     });
   };
 
@@ -58,6 +62,8 @@ export default function KnowledgePage() {
       const updated = await api.updateOrganizationSources(currentOrg.organization_id, {
         website_url: websiteUrl.trim(),
         social_media_urls: socialMediaUrls.trim(),
+        facebook_page_id: facebookPageId.trim(),
+        facebook_page_access_token: facebookPageAccessToken.trim(),
       });
       setSources(updated);
     } finally {
@@ -161,6 +167,42 @@ export default function KnowledgePage() {
             {sources.documents_count === 0
               ? "Aucun document pour l'instant — au moins 2 sont recommandés pour de bons résultats."
               : "Un seul document pour l'instant — au moins 2 sont recommandés pour de bons résultats."}
+          </p>
+        )}
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>Facebook Lead Ads (prospection B2C)</div>
+        <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 12 }}>
+          Renseignez ces deux identifiants pour que les leads de vos publicités Facebook (avec consentement
+          explicite au formulaire) soient automatiquement transmis à vos agents commerciaux. L'abonnement au
+          webhook se fait automatiquement, aucune manipulation supplémentaire de votre part sur Facebook.
+        </p>
+        <form onSubmit={handleSaveSources} className={styles.sourcesForm}>
+          <input
+            placeholder="Identifiant de la page Facebook (Page ID)"
+            value={facebookPageId}
+            onChange={(e) => setFacebookPageId(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Jeton d'accès de la page (Page Access Token)"
+            value={facebookPageAccessToken}
+            onChange={(e) => setFacebookPageAccessToken(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary" disabled={savingSources}>
+            {savingSources ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </form>
+        {sources?.facebook_subscription_status === "ok" && (
+          <p style={{ fontSize: 12.5, color: "var(--color-signal)", marginTop: 12 }}>
+            ✓ Abonnement au webhook confirmé — vos prochains leads Facebook seront reçus automatiquement.
+          </p>
+        )}
+        {sources?.facebook_subscription_status === "failed" && (
+          <p style={{ fontSize: 12.5, color: "var(--color-red)", marginTop: 12 }}>
+            L'abonnement automatique a échoué — vérifiez l'identifiant de page et le jeton d'accès (doit avoir les
+            permissions pages_manage_metadata et leads_retrieval).
           </p>
         )}
       </div>

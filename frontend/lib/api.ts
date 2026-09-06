@@ -312,6 +312,9 @@ export interface OrganizationSources {
   website_url: string | null;
   social_media_urls: string | null;
   documents_count: number;
+  facebook_page_id: string | null;
+  facebook_page_access_token: string | null;
+  facebook_subscription_status: string | null;
 }
 
 export interface KnowledgeSearchResult {
@@ -756,7 +759,7 @@ export const api = {
     }),
   getOrganizationSources: (organizationId: string) =>
     request<OrganizationSources>("/knowledge/sources", { organizationId }),
-  updateOrganizationSources: (organizationId: string, data: { website_url?: string; social_media_urls?: string }) =>
+  updateOrganizationSources: (organizationId: string, data: { website_url?: string; social_media_urls?: string; facebook_page_id?: string; facebook_page_access_token?: string }) =>
     request<OrganizationSources>("/knowledge/sources", {
       method: "PATCH",
       organizationId,

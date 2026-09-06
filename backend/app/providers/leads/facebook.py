@@ -30,6 +30,23 @@ class FacebookLeadProvider(LeadProvider):
         return _parse_field_data(data.get("field_data", []))
 
 
+def subscribe_page_to_leadgen_webhook(page_id: str, page_access_token: str) -> bool:
+    """
+    Abonne automatiquement la page du client au webhook "leadgen" (section
+    42/43) — évite au client de devoir faire cette manipulation lui-même
+    dans l'interface Meta après avoir renseigné ses identifiants chez nous.
+    Résilience (section 29) : un échec ne doit jamais empêcher l'enregistrement
+    local des identifiants, juste être signalé clairement.
+    """
+    response = httpx.post(
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{page_id}/subscribed_apps",
+        params={"subscribed_fields": "leadgen", "access_token": page_access_token},
+        timeout=10.0,
+    )
+    response.raise_for_status()
+    return bool(response.json().get("success"))
+
+
 def _parse_field_data(field_data: list[dict]) -> dict:
     phone, name = None, None
     summary_parts = []

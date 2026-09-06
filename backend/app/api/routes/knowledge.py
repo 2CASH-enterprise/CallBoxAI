@@ -2,6 +2,7 @@
 Endpoints Base de connaissances (section 10 du cahier des charges).
 """
 import json
+import logging
 import uuid
 from datetime import datetime
 
@@ -17,6 +18,8 @@ from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
 from app.models.organization import Organization
 from app.providers.embeddings.mock import MockEmbeddingProvider
 from app.core.knowledge_sync import sync_knowledge_source
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
@@ -183,6 +186,7 @@ class OrganizationSourcesOut(BaseModel):
     documents_count: int
     facebook_page_id: str | None
     facebook_page_access_token: str | None
+    facebook_subscription_status: str | None = None  # "ok" | "failed" | None (non tenté)
 
 
 class OrganizationSourcesUpdate(BaseModel):
@@ -237,6 +241,19 @@ def update_organization_sources(
     if payload.facebook_page_access_token is not None:
         organization.facebook_page_access_token = payload.facebook_page_access_token or None
 
+    facebook_subscription_status = None
+    if organization.facebook_page_id and organization.facebook_page_access_token:
+        try:
+            from app.providers.leads.facebook import subscribe_page_to_leadgen_webhook
+
+            success = subscribe_page_to_leadgen_webhook(
+                organization.facebook_page_id, organization.facebook_page_access_token
+            )
+            facebook_subscription_status = "ok" if success else "failed"
+        except Exception:
+            logger.exception("Échec de l'abonnement automatique au webhook Facebook Lead Ads")
+            facebook_subscription_status = "failed"
+
     db.commit()
 
     if new_urls:
@@ -248,4 +265,5 @@ def update_organization_sources(
         documents_count=documents_count,
         facebook_page_id=organization.facebook_page_id,
         facebook_page_access_token=organization.facebook_page_access_token,
+        facebook_subscription_status=facebook_subscription_status,
     )
