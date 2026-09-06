@@ -13,10 +13,13 @@ export default function PolitiqueConfidentialitePage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>1. Qui nous sommes</h2>
         <p>
-          CallBoxAI fournit une plateforme d'agents vocaux intelligents permettant à des entreprises clientes
-          d'automatiser la réception et l'émission d'appels téléphoniques (accueil client, prospection commerciale,
-          prise de rendez-vous, service client). La présente politique explique comment nous traitons les données
-          personnelles des personnes contactées par nos agents, ainsi que celles de nos clients eux-mêmes.
+          CallBoxAI est une solution développée par <strong>SAS 2 Cash Enterprise (Holding)</strong>, dont le siège
+          social est situé au 1 Rue Hartz Huel, 22500 Kerfot, France, et exploitée sous la marque{" "}
+          <strong>Agen'C AI</strong>, basée à Abidjan, Côte d'Ivoire. CallBoxAI fournit une plateforme d'agents
+          vocaux intelligents permettant à des entreprises clientes d'automatiser la réception et l'émission
+          d'appels téléphoniques (accueil client, prospection commerciale, prise de rendez-vous, service client).
+          La présente politique explique comment nous traitons les données personnelles des personnes contactées
+          par nos agents, ainsi que celles de nos clients eux-mêmes.
         </p>
       </div>
 
@@ -118,6 +121,12 @@ export default function PolitiqueConfidentialitePage() {
           applicable. La date de dernière mise à jour figure en haut de cette page.
         </p>
       </div>
+
+      <p className={styles.legalMention}>
+        © 2026 SAS 2 Cash Enterprise (Holding) — 1 Rue Hartz Huel, 22500 Kerfot, France.
+        <br />
+        Exploitation : Agen'C AI — Abidjan, Côte d'Ivoire.
+      </p>
     </div>
   );
 }
