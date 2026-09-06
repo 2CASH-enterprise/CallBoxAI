@@ -64,6 +64,10 @@ services:
       # JAMAIS le conteneur — c'est ce qui désactivait silencieusement les
       # outils PMS en direct ET le webhook_url à chaque provisionnement.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Même bug que PUBLIC_BASE_URL à l'origine (section 42/43) : oublié à
+      # l'introduction de l'intégration Facebook Lead Ads, corrigé directement.
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      FACEBOOK_WEBHOOK_VERIFY_TOKEN: ${FACEBOOK_WEBHOOK_VERIFY_TOKEN:-}
       # Même bug que PUBLIC_BASE_URL à l'origine : oublié à l'introduction
       # de l'appel de démo public (section 1), corrigé directement cette fois.
       DEMO_AGENT_RETELL_ID: ${DEMO_AGENT_RETELL_ID:-}
