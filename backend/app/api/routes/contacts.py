@@ -370,17 +370,12 @@ def list_data_subject_requests(
     )
 
 
-@router.get("/contacts/{contact_id}/data-export")
-def export_contact_data(
-    contact_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    organization_id: uuid.UUID = Depends(require_organization_access),
-):
+def _compile_contact_export(db: Session, contact: Contact, organization_id: uuid.UUID) -> dict:
     """
-    Droit d'accès (section 42/43) : compile l'intégralité des données
-    détenues sur ce contact — à remettre à la personne qui en fait la
-    demande. Marque automatiquement la dernière demande d'accès en attente
-    comme traitée, s'il en existe une.
+    Compile l'intégralité des données détenues sur un contact (section
+    42/43, droit d'accès) — partagée entre l'export JSON (brut, pour un
+    usage technique) et l'export PDF (lisible, à remettre directement à la
+    personne qui en fait la demande).
     """
     from app.models.appointment import Appointment
     from app.models.ticket import Ticket
@@ -389,21 +384,16 @@ def export_contact_data(
     from app.models.compliance_audit_log import ComplianceAuditLog
     from app.models.whatsapp_log import WhatsAppLog
     from app.models.sms_log import SmsLog
-    from app.models.data_subject_request import DataSubjectRequest
 
-    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
-    if not contact:
-        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
-
-    calls = db.query(Call).filter(Call.contact_id == contact_id, Call.organization_id == organization_id).all()
-    appointments = db.query(Appointment).filter(Appointment.contact_id == contact_id, Appointment.organization_id == organization_id).all()
-    tickets = db.query(Ticket).filter(Ticket.contact_id == contact_id, Ticket.organization_id == organization_id).all()
-    consents = db.query(ConsentRecord).filter(ConsentRecord.contact_id == contact_id, ConsentRecord.organization_id == organization_id).all()
-    audit_logs = db.query(ComplianceAuditLog).filter(ComplianceAuditLog.contact_id == contact_id, ComplianceAuditLog.organization_id == organization_id).all()
+    calls = db.query(Call).filter(Call.contact_id == contact.id, Call.organization_id == organization_id).all()
+    appointments = db.query(Appointment).filter(Appointment.contact_id == contact.id, Appointment.organization_id == organization_id).all()
+    tickets = db.query(Ticket).filter(Ticket.contact_id == contact.id, Ticket.organization_id == organization_id).all()
+    consents = db.query(ConsentRecord).filter(ConsentRecord.contact_id == contact.id, ConsentRecord.organization_id == organization_id).all()
+    audit_logs = db.query(ComplianceAuditLog).filter(ComplianceAuditLog.contact_id == contact.id, ComplianceAuditLog.organization_id == organization_id).all()
     whatsapp_logs = db.query(WhatsAppLog).filter(WhatsAppLog.to_number == contact.phone, WhatsAppLog.organization_id == organization_id).all()
     sms_logs = db.query(SmsLog).filter(SmsLog.to_number == contact.phone, SmsLog.organization_id == organization_id).all()
 
-    export = {
+    return {
         "contact": {
             "id": str(contact.id), "first_name": contact.first_name, "last_name": contact.last_name,
             "phone": contact.phone, "email": contact.email, "status": contact.status,
@@ -437,6 +427,28 @@ def export_contact_data(
         "sms_messages": [{"body": s.body, "created_at": s.created_at.isoformat()} for s in sms_logs],
     }
 
+
+@router.get("/contacts/{contact_id}/data-export")
+def export_contact_data(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Droit d'accès (section 42/43) : compile l'intégralité des données
+    détenues sur ce contact, au format brut (technique) — voir aussi
+    /data-export-pdf pour un document directement lisible, à remettre à la
+    personne concernée. Marque automatiquement la dernière demande d'accès
+    en attente comme traitée, s'il en existe une.
+    """
+    from app.models.data_subject_request import DataSubjectRequest
+
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    export = _compile_contact_export(db, contact, organization_id)
+
     pending_access_request = (
         db.query(DataSubjectRequest)
         .filter(
@@ -451,6 +463,50 @@ def export_contact_data(
         db.commit()
 
     return export
+
+
+@router.get("/contacts/{contact_id}/data-export-pdf")
+def export_contact_data_pdf(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Droit d'accès (section 42/43) : même contenu que /data-export, mais sous
+    forme de document PDF directement lisible — celui-ci est fait pour être
+    remis tel quel à la personne qui exerce son droit d'accès, contrairement
+    à l'export brut JSON pensé pour un usage technique.
+    """
+    from app.core.data_export_pdf import generate_data_export_pdf
+    from app.models.organization import Organization
+    from app.models.data_subject_request import DataSubjectRequest
+
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    organization = db.query(Organization).filter(Organization.id == organization_id).first()
+    export = _compile_contact_export(db, contact, organization_id)
+    pdf_bytes = generate_data_export_pdf(export, organization.name if organization else "l'entreprise")
+
+    pending_access_request = (
+        db.query(DataSubjectRequest)
+        .filter(
+            DataSubjectRequest.contact_id == contact_id, DataSubjectRequest.organization_id == organization_id,
+            DataSubjectRequest.request_type == "access", DataSubjectRequest.status == "pending",
+        )
+        .first()
+    )
+    if pending_access_request:
+        pending_access_request.status = "fulfilled"
+        pending_access_request.fulfilled_at = datetime.utcnow()
+        db.commit()
+
+    filename = f"donnees-{contact.phone.replace('+', '').replace(' ', '')}.pdf"
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/contacts/{contact_id}/erase")

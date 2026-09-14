@@ -811,8 +811,29 @@ export const api = {
     }),
   getContactComplianceLog: (organizationId: string, contactId: string) =>
     request<ComplianceAuditLog[]>(`/contacts/${contactId}/compliance-log`, { organizationId }),
-  exportContactData: (organizationId: string, contactId: string) =>
-    request<Record<string, unknown>>(`/contacts/${contactId}/data-export`, { organizationId }),
+  exportContactDataPdf: async (organizationId: string, contactId: string) => {
+    const token = getStoredToken();
+    const response = await fetch(`${API_URL}/contacts/${contactId}/data-export-pdf`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "x-organization-id": organizationId,
+      },
+    });
+    if (!response.ok) throw new ApiError(await response.text(), response.status);
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="(.+)"/);
+    const filename = match ? match[1] : "donnees.pdf";
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
   eraseContactData: (organizationId: string, contactId: string) =>
     request<{ status: string; calls_redacted: number }>(`/contacts/${contactId}/erase`, { method: "POST", organizationId }),
   importContactsUpload: (organizationId: string, file: File) => {

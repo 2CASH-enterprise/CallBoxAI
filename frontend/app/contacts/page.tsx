@@ -110,14 +110,7 @@ export default function ContactsPage() {
 
   async function handleExportData(contact: Contact) {
     if (!currentOrg) return;
-    const data = await api.exportContactData(currentOrg.organization_id, contact.id);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `donnees-${contact.phone.replace(/[^0-9]/g, "")}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    await api.exportContactDataPdf(currentOrg.organization_id, contact.id);
   }
 
   async function handleEraseData(contact: Contact) {
