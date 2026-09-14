@@ -98,6 +98,7 @@ class ImportSummary(BaseModel):
     imported: int
     skipped_invalid_phone: int
     total_targets: int
+    already_do_not_call: int = 0
 
 
 class BatchResult(BaseModel):
@@ -225,6 +226,7 @@ async def import_contacts(
         imported=shared_summary.imported,
         skipped_invalid_phone=shared_summary.skipped_invalid_phone,
         total_targets=total_targets,
+        already_do_not_call=shared_summary.already_do_not_call,
     )
 
 
@@ -266,7 +268,7 @@ def _process_single_target(db, organization_id, campaign, agent, target, contact
     "blocked", "completed", "follow_up", "failed", ou "no_answer".
     """
     allowed, reason = check_compliance(
-        db, organization_id, campaign.target_market, agent, contact.id, now,
+        db, organization_id, campaign.target_market, agent, contact.id, now, campaign_id=campaign.id,
     )
     if not allowed:
         logger.info("Contact %s bloqué par le Compliance Check : %s", contact.id, reason)

@@ -161,8 +161,82 @@ async def retell_webhook(request: Request, db: Session = Depends(get_db)):
         if call.status == "in_progress":
             call.status = "completed"
 
+        # Consentement à l'enregistrement refusé (section 42/43) : la
+        # classification vient de s'appuyer sur le contenu réel (nécessaire
+        # au suivi commercial), mais le contenu détaillé lui-même ne doit
+        # JAMAIS être conservé — seul le résultat (qualification, etc.) l'est.
+        if call.recording_consent_refused:
+            call.transcript = "[Non conservé — consentement à l'enregistrement refusé par l'interlocuteur]"
+            call.summary = "[Non conservé — consentement à l'enregistrement refusé par l'interlocuteur]"
+
     db.commit()
     return {"status": "ok"}
+
+
+@router.post("/retell/tools/withdraw-recording-consent")
+async def withdraw_recording_consent(request: Request, db: Session = Depends(get_db)):
+    """
+    Outil en direct (section 42/43) : l'agent appelle ceci si l'interlocuteur
+    indique ne pas vouloir être enregistré, mais souhaite que l'appel
+    continue. Identifie l'appel via l'objet "call" transmis par Retell
+    (args_at_root désactivé pour ce outil précisément, voir retell_provider),
+    plus fiable qu'une recherche par numéro de téléphone.
+
+    Résilience (section 29) : si l'appel n'est pas encore retrouvable (créé
+    entre-temps par call_started, webhook parfois légèrement en retard), on
+    répond quand même normalement à l'agent — l'important est de ne jamais
+    interrompre la conversation pour une raison technique de notre côté.
+    """
+    payload = await request.json()
+    call_id = payload.get("call", {}).get("call_id")
+
+    if call_id:
+        call = db.query(Call).filter(Call.provider_call_id == call_id).first()
+        if call:
+            call.recording_consent_refused = True
+            db.commit()
+            logger.info("Consentement à l'enregistrement retiré pour l'appel %s", call.id)
+        else:
+            logger.warning("withdraw_recording_consent : appel introuvable pour call_id=%s", call_id)
+    else:
+        logger.warning("withdraw_recording_consent : aucun call_id transmis dans la requête")
+
+    return {"result": "D'accord, je continue sans enregistrer votre message."}
+
+
+@router.post("/retell/tools/register-do-not-call")
+async def register_do_not_call(request: Request, db: Session = Depends(get_db)):
+    """
+    Outil en direct (section 42/43, recommandation CNIL — "liste
+    repoussoir") : l'agent appelle ceci dès que le prospect exprime
+    explicitement ne plus vouloir être recontacté. Bloque le CONTACT (pas
+    seulement cet appel) pour toutes les campagnes futures — retrouvé via
+    Call.contact_id, lui-même identifié par call.call_id (voir
+    withdraw_recording_consent pour le même principe).
+
+    Résilience (section 29) : si le contact n'est pas retrouvable, on
+    répond quand même normalement à l'agent, sans jamais bloquer la fin
+    de l'appel pour une raison technique de notre côté.
+    """
+    payload = await request.json()
+    call_id = payload.get("call", {}).get("call_id")
+
+    if call_id:
+        call = db.query(Call).filter(Call.provider_call_id == call_id).first()
+        if call and call.contact_id:
+            contact = db.query(Contact).filter(Contact.id == call.contact_id).first()
+            if contact:
+                contact.do_not_call = True
+                contact.do_not_call_reason = "Demande explicite pendant un appel."
+                contact.do_not_call_at = datetime.utcnow()
+                db.commit()
+                logger.info("Contact %s ajouté à la liste repoussoir (appel %s)", contact.id, call.id)
+        else:
+            logger.warning("register_do_not_call : appel ou contact introuvable pour call_id=%s", call_id)
+    else:
+        logger.warning("register_do_not_call : aucun call_id transmis dans la requête")
+
+    return {"result": "C'est noté, vous ne serez plus recontacté(e). Je vous souhaite une bonne journée."}
 
 
 @router.post("/twilio")

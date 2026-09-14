@@ -4,6 +4,7 @@ Endpoints Contacts (CRM minimal — section 18 du cahier des charges).
 import csv
 import io
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from pydantic import BaseModel
@@ -35,6 +36,21 @@ class ContactCreate(BaseModel):
     phone: str
     email: str | None = None
     status: str = "Nouveau"
+    company: str | None = None
+    job_title: str | None = None
+    source: str | None = None
+
+
+class ContactUpdate(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    status: str | None = None
+    company: str | None = None
+    job_title: str | None = None
+    source: str | None = None
+    do_not_call: bool | None = None
+    do_not_call_reason: str | None = None
 
 
 class ContactOut(BaseModel):
@@ -45,6 +61,11 @@ class ContactOut(BaseModel):
     phone: str
     email: str | None
     status: str
+    company: str | None = None
+    job_title: str | None = None
+    source: str | None = None
+    do_not_call: bool = False
+    do_not_call_reason: str | None = None
 
     class Config:
         from_attributes = True
@@ -64,6 +85,40 @@ def create_contact(
         raise HTTPException(status_code=400, detail="Statut invalide")
     contact = Contact(organization_id=organization_id, **payload.model_dump())
     db.add(contact)
+    db.commit()
+    db.refresh(contact)
+    return contact
+
+
+@router.patch("/contacts/{contact_id}", response_model=ContactOut)
+def update_contact(
+    contact_id: uuid.UUID,
+    payload: ContactUpdate,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Mise à jour manuelle d'un contact — sert notamment à marquer un contact
+    en liste repoussoir (section 42/43) sans passer par un appel (ex. une
+    demande reçue par email ou courrier), ou à corriger/compléter les
+    champs enrichis B2B après import.
+    """
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    updates = payload.model_dump(exclude_unset=True)
+    if "status" in updates and updates["status"] is not None and updates["status"] not in VALID_STATUSES:
+        raise HTTPException(status_code=400, detail="Statut invalide")
+
+    if updates.get("do_not_call") is True and not contact.do_not_call:
+        updates["do_not_call_at"] = datetime.utcnow()
+        if not updates.get("do_not_call_reason"):
+            updates["do_not_call_reason"] = "Marqué manuellement par un utilisateur."
+
+    for field, value in updates.items():
+        setattr(contact, field, value)
+
     db.commit()
     db.refresh(contact)
     return contact
@@ -197,3 +252,40 @@ def export_contacts(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ---------- Journal d'audit de conformité (section 42/43) ----------
+
+class ComplianceAuditLogOut(BaseModel):
+    id: uuid.UUID
+    contact_id: uuid.UUID
+    campaign_id: uuid.UUID | None
+    decision: str
+    reason: str
+    legal_basis: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/contacts/{contact_id}/compliance-log", response_model=list[ComplianceAuditLogOut])
+def get_contact_compliance_log(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Historique complet des décisions de conformité pour ce contact (section
+    42/43) — permet de reconstruire "pourquoi cet appel a été autorisé (ou
+    bloqué)" en cas de contrôle.
+    """
+    from app.models.compliance_audit_log import ComplianceAuditLog
+
+    logs = (
+        db.query(ComplianceAuditLog)
+        .filter(ComplianceAuditLog.contact_id == contact_id, ComplianceAuditLog.organization_id == organization_id)
+        .order_by(ComplianceAuditLog.created_at.desc())
+        .all()
+    )
+    return logs

@@ -25,6 +25,7 @@ export default function ContactsPage() {
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [importOpen, setImportOpen] = useState(false);
@@ -51,10 +52,12 @@ export default function ContactsPage() {
         phone: phone.trim(),
         first_name: firstName.trim() || undefined,
         email: email.trim() || undefined,
+        company: company.trim() || undefined,
       });
       setPhone("");
       setFirstName("");
       setEmail("");
+      setCompany("");
       load();
     } finally {
       setSubmitting(false);
@@ -99,6 +102,12 @@ export default function ContactsPage() {
     }
   }
 
+  async function handleToggleDoNotCall(contact: Contact) {
+    if (!currentOrg) return;
+    await api.updateContact(currentOrg.organization_id, contact.id, { do_not_call: !contact.do_not_call });
+    load();
+  }
+
   if (!currentOrg) {
     return <p style={{ color: "var(--color-muted)" }}>Sélectionnez ou créez une organisation.</p>;
   }
@@ -138,7 +147,8 @@ export default function ContactsPage() {
           ) : (
             <div className={styles.pasteForm}>
               <p className={styles.importHint}>
-                Colonnes attendues : <code>phone</code> (obligatoire), <code>first_name</code>, <code>last_name</code> (optionnelles).
+                Colonnes attendues : <code>phone</code> (obligatoire), <code>first_name</code>, <code>last_name</code>,{" "}
+                <code>company</code>, <code>job_title</code>, <code>source</code> (toutes optionnelles).
                 Fonctionne aussi avec des milliers de contacts en un seul fichier.
               </p>
               <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportFile} disabled={importing} />
@@ -153,6 +163,7 @@ export default function ContactsPage() {
         <input placeholder="Prénom (optionnel)" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         <input placeholder="Numéro de téléphone" required value={phone} onChange={(e) => setPhone(e.target.value)} />
         <input placeholder="Email (optionnel)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input placeholder="Entreprise (optionnel)" value={company} onChange={(e) => setCompany(e.target.value)} />
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           <Plus size={14} /> {submitting ? "Ajout…" : "Ajouter un contact"}
         </button>
@@ -161,11 +172,12 @@ export default function ContactsPage() {
       <div className={styles.table}>
         <div className={`${styles.row} ${styles.rowHead}`}>
           <span>Nom</span>
+          <span>Entreprise</span>
           <span>Téléphone</span>
           <span>Statut</span>
         </div>
         {loading ? (
-          <><SkeletonRow columns={3} /><SkeletonRow columns={3} /><SkeletonRow columns={3} /></>
+          <><SkeletonRow columns={4} /><SkeletonRow columns={4} /><SkeletonRow columns={4} /></>
         ) : contacts.length === 0 ? (
           <div className={styles.emptyState}>
             <Users size={26} strokeWidth={1.5} className={styles.emptyIcon} />
@@ -175,8 +187,37 @@ export default function ContactsPage() {
           contacts.map((c) => (
             <div key={c.id} className={styles.row}>
               <span>{[c.first_name, c.last_name].filter(Boolean).join(" ") || "—"}</span>
+              <span style={{ color: "var(--color-muted)", fontSize: 12.5 }}>
+                {c.company || "—"}{c.job_title ? ` · ${c.job_title}` : ""}
+              </span>
               <span className={styles.phone}>{c.phone}</span>
-              <span className={`${styles.statusTag} ${STATUS_ACCENT[c.status] || styles.statusNeutral}`}>{c.status}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className={`${styles.statusTag} ${STATUS_ACCENT[c.status] || styles.statusNeutral}`}>{c.status}</span>
+                {c.do_not_call ? (
+                  <button
+                    onClick={() => handleToggleDoNotCall(c)}
+                    title={c.do_not_call_reason || "Sur liste repoussoir"}
+                    style={{
+                      fontSize: 10.5, fontFamily: "var(--font-mono)", textTransform: "uppercase",
+                      background: "var(--color-red-soft)", color: "var(--color-red)",
+                      padding: "2px 8px", borderRadius: 20, border: "none", cursor: "pointer",
+                    }}
+                  >
+                    Ne plus appeler
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleToggleDoNotCall(c)}
+                    title="Marquer comme ne plus jamais appeler"
+                    style={{
+                      fontSize: 10.5, color: "var(--color-muted)", background: "none",
+                      border: "none", cursor: "pointer", textDecoration: "underline",
+                    }}
+                  >
+                    Liste repoussoir
+                  </button>
+                )}
+              </span>
             </div>
           ))
         )}

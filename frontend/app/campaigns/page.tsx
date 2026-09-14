@@ -81,8 +81,11 @@ export default function CampaignsPage() {
     setImportSummary(null);
     try {
       const summary = await api.importCampaignContacts(currentOrg.organization_id, selectedId, e.target.files[0]);
+      const dncNote = summary.already_do_not_call > 0
+        ? ` ${summary.already_do_not_call} contact(s) déjà en liste repoussoir (jamais appelé(s)).`
+        : "";
       setImportSummary(
-        `${summary.imported} contact(s) importé(s), ${summary.skipped_invalid_phone} numéro(s) invalide(s) ignoré(s). Total dans la campagne : ${summary.total_targets}.`
+        `${summary.imported} contact(s) importé(s), ${summary.skipped_invalid_phone} numéro(s) invalide(s) ignoré(s). Total dans la campagne : ${summary.total_targets}.${dncNote}`
       );
       loadDetail();
     } finally {
@@ -173,7 +176,8 @@ export default function CampaignsPage() {
                 <div className={styles.section}>
                   <div className={styles.sectionHeader}>Importer des contacts (CSV)</div>
                   <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 10 }}>
-                    Colonnes attendues : <code>phone</code> (obligatoire), <code>first_name</code>, <code>last_name</code> (optionnelles).
+                    Colonnes attendues : <code>phone</code> (obligatoire), <code>first_name</code>, <code>last_name</code>,{" "}
+                    <code>company</code>, <code>job_title</code>, <code>source</code> (toutes optionnelles).
                   </p>
                   <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImport} disabled={importing} />
                   {importSummary && <p className={styles.batchResult}>{importSummary}</p>}

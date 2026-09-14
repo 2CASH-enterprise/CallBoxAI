@@ -290,6 +290,61 @@ def _build_ticket_lookup_tool(organization_id: str, public_base_url: str) -> dic
     }
 
 
+def _build_recording_consent_tool(public_base_url: str) -> dict:
+    """
+    Outil de retrait du consentement à l'enregistrement (section 42/43) —
+    si l'interlocuteur indique ne pas vouloir être enregistré, l'agent
+    utilise cet outil pour le signaler, PUIS continue l'appel normalement,
+    sans jamais raccrocher. args_at_root volontairement DÉSACTIVÉ : c'est ce
+    qui permet à Retell de transmettre l'objet "call" (avec call_id), le
+    seul moyen fiable d'identifier PRÉCISÉMENT l'appel en cours (plus fiable
+    qu'une recherche par numéro de téléphone, qui pourrait correspondre à
+    plusieurs appels différents dans le temps).
+    """
+    base = public_base_url.rstrip("/")
+    return {
+        "type": "custom",
+        "name": "withdraw_recording_consent",
+        "description": (
+            "Utilise cet outil UNIQUEMENT si l'interlocuteur indique explicitement ne pas vouloir "
+            "être enregistré, mais souhaite que l'appel continue. N'interrompt jamais la conversation : "
+            "après avoir utilisé cet outil, poursuis normalement l'appel."
+        ),
+        "url": f"{base}/webhooks/retell/tools/withdraw-recording-consent",
+        "method": "POST",
+        "speak_after_execution": False,
+        "args_at_root": False,
+        "parameters": {"type": "object", "properties": {}},
+    }
+
+
+def _build_do_not_call_tool(public_base_url: str) -> dict:
+    """
+    Outil de liste repoussoir (section 42/43, recommandation CNIL) — si le
+    prospect exprime explicitement le souhait de ne plus être recontacté
+    ("ne me rappelez plus"), l'agent utilise cet outil pour l'enregistrer
+    IMMÉDIATEMENT, avant même la fin de l'appel. Bloque ce contact pour
+    TOUTES les campagnes futures, quel que soit le marché ou la catégorie
+    d'agent. Même mécanisme d'identification que le consentement à
+    l'enregistrement (call.call_id, args_at_root désactivé).
+    """
+    base = public_base_url.rstrip("/")
+    return {
+        "type": "custom",
+        "name": "register_do_not_call",
+        "description": (
+            "Utilise cet outil DÈS que l'interlocuteur exprime explicitement ne plus vouloir être "
+            "recontacté (ex. \"ne me rappelez plus\", \"retirez-moi de votre liste\"). Termine ensuite "
+            "l'appel poliment, sans insister."
+        ),
+        "url": f"{base}/webhooks/retell/tools/register-do-not-call",
+        "method": "POST",
+        "speak_after_execution": False,
+        "args_at_root": False,
+        "parameters": {"type": "object", "properties": {}},
+    }
+
+
 class RetellProvider(VoiceProvider):
     def __init__(self, api_key: str, agent_id: str):
         self._agent_id = agent_id
@@ -491,6 +546,11 @@ class RetellProvider(VoiceProvider):
             tools.append(_build_meeting_tool(organization_id, callboxai_agent_id, public_base_url))
         if ticketing_enabled and organization_id and public_base_url:
             tools.append(_build_ticket_lookup_tool(organization_id, public_base_url))
+        if public_base_url:
+            # Inconditionnel (section 42/43) : concerne tout appel enregistré,
+            # pas seulement certaines catégories d'agents.
+            tools.append(_build_recording_consent_tool(public_base_url))
+            tools.append(_build_do_not_call_tool(public_base_url))
         tools = tools or None
 
         webhook_url = f"{public_base_url.rstrip('/')}/webhooks/retell" if public_base_url else None

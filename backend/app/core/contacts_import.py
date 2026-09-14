@@ -33,11 +33,18 @@ FIRST_NAME_COLUMN_ALIASES = {"first_name", "firstname", "prenom", "nom", "name"}
 LAST_NAME_COLUMN_ALIASES = {"last_name", "lastname", "nom_de_famille"}
 EMAIL_COLUMN_ALIASES = {"email", "mail", "courriel", "e-mail"}
 
+# Champs enrichis B2B (section 42/43) : traçabilité de la donnée, utile
+# pour documenter la base légale d'une campagne de prospection entreprises.
+COMPANY_COLUMN_ALIASES = {"company", "societe", "société", "entreprise"}
+JOB_TITLE_COLUMN_ALIASES = {"job_title", "fonction", "poste", "titre"}
+SOURCE_COLUMN_ALIASES = {"source", "provenance", "origine"}
+
 
 class ImportSummary(BaseModel):
     imported: int
     skipped_invalid_phone: int
     total: int
+    already_do_not_call: int = 0  # informatif : jamais bloqués à l'import, seulement au moment de l'appel
 
 
 def _normalize_header(header: str) -> str:
@@ -73,9 +80,13 @@ def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_t
     first_name_col = _find_column(fieldnames, FIRST_NAME_COLUMN_ALIASES)
     last_name_col = _find_column(fieldnames, LAST_NAME_COLUMN_ALIASES)
     email_col = _find_column(fieldnames, EMAIL_COLUMN_ALIASES)
+    company_col = _find_column(fieldnames, COMPANY_COLUMN_ALIASES)
+    job_title_col = _find_column(fieldnames, JOB_TITLE_COLUMN_ALIASES)
+    source_col = _find_column(fieldnames, SOURCE_COLUMN_ALIASES)
 
     imported = 0
     skipped = 0
+    already_do_not_call = 0
     contacts: list[Contact] = []
 
     for row in reader:
@@ -94,12 +105,21 @@ def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_t
                 first_name=(row.get(first_name_col) or "").strip() or None if first_name_col else None,
                 last_name=(row.get(last_name_col) or "").strip() or None if last_name_col else None,
                 email=(row.get(email_col) or "").strip() or None if email_col else None,
+                company=(row.get(company_col) or "").strip() or None if company_col else None,
+                job_title=(row.get(job_title_col) or "").strip() or None if job_title_col else None,
+                source=(row.get(source_col) or "").strip() or None if source_col else None,
             )
             db.add(contact)
             db.flush()
 
+        if contact.do_not_call:
+            already_do_not_call += 1
+
         contacts.append(contact)
         imported += 1
 
-    summary = ImportSummary(imported=imported, skipped_invalid_phone=skipped, total=imported + skipped)
+    summary = ImportSummary(
+        imported=imported, skipped_invalid_phone=skipped, total=imported + skipped,
+        already_do_not_call=already_do_not_call,
+    )
     return summary, contacts

@@ -356,6 +356,7 @@ export interface ImportSummary {
   imported: number;
   skipped_invalid_phone: number;
   total_targets: number;
+  already_do_not_call: number;
 }
 
 export interface PipelineStage {
@@ -386,6 +387,21 @@ export interface Contact {
   phone: string;
   email: string | null;
   status: string;
+  company: string | null;
+  job_title: string | null;
+  source: string | null;
+  do_not_call: boolean;
+  do_not_call_reason: string | null;
+}
+
+export interface ComplianceAuditLog {
+  id: string;
+  contact_id: string;
+  campaign_id: string | null;
+  decision: string;
+  reason: string;
+  legal_basis: string | null;
+  created_at: string;
 }
 
 export interface Appointment {
@@ -773,13 +789,25 @@ export const api = {
     request<Contact[]>("/contacts", { organizationId }),
   createContact: (
     organizationId: string,
-    data: { first_name?: string; last_name?: string; phone: string; email?: string; status?: string }
+    data: { first_name?: string; last_name?: string; phone: string; email?: string; status?: string; company?: string; job_title?: string; source?: string }
   ) =>
     request<Contact>("/contacts", {
       method: "POST",
       organizationId,
       body: JSON.stringify(data),
     }),
+  updateContact: (
+    organizationId: string,
+    contactId: string,
+    data: Partial<{ first_name: string; last_name: string; email: string; status: string; company: string; job_title: string; source: string; do_not_call: boolean; do_not_call_reason: string }>
+  ) =>
+    request<Contact>(`/contacts/${contactId}`, {
+      method: "PATCH",
+      organizationId,
+      body: JSON.stringify(data),
+    }),
+  getContactComplianceLog: (organizationId: string, contactId: string) =>
+    request<ComplianceAuditLog[]>(`/contacts/${contactId}/compliance-log`, { organizationId }),
   importContactsUpload: (organizationId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
