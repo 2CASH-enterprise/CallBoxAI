@@ -45,6 +45,7 @@ class ImportSummary(BaseModel):
     skipped_invalid_phone: int
     total: int
     already_do_not_call: int = 0  # informatif : jamais bloqués à l'import, seulement au moment de l'appel
+    consent_certified_count: int = 0  # nombre de contacts pour lesquels un consentement a été certifié à l'import
 
 
 def _normalize_header(header: str) -> str:
@@ -66,12 +67,27 @@ def _clean_phone(raw: str) -> str:
     return _PHONE_FORMATTING_CHARS.sub("", raw.strip())
 
 
-def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_text: str) -> tuple[ImportSummary, list[Contact]]:
+def import_contacts_from_csv_text(
+    db: Session,
+    organization_id: uuid.UUID,
+    csv_text: str,
+    certify_consent: bool = False,
+    consent_note: str | None = None,
+) -> tuple[ImportSummary, list[Contact]]:
     """
     Parse un texte CSV et crée (ou réutilise, par numéro) les contacts
     correspondants pour cette organisation. Les numéros invalides sont
     comptabilisés et ignorés plutôt que de faire échouer tout l'import
     (utile pour une liste de 1000 contacts avec quelques erreurs de saisie).
+
+    `certify_consent` (section 42/43) : à utiliser quand le client importe
+    des personnes pour lesquelles il DÉCLARE disposer déjà d'un consentement
+    valide (ex. clients existants pour une campagne de Fidélisation, pas
+    capturés via un formulaire comme Facebook Lead Ads) — crée une entrée
+    dans le Consent Ledger pour chaque contact du fichier, marquée
+    explicitement comme une DÉCLARATION du client, jamais une preuve
+    vérifiée indépendamment par la plateforme (honnêteté de la source,
+    importante en cas de contrôle).
     """
     reader = csv.DictReader(io.StringIO(csv_text))
     fieldnames = reader.fieldnames or []
@@ -87,6 +103,7 @@ def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_t
     imported = 0
     skipped = 0
     already_do_not_call = 0
+    consent_certified_count = 0
     contacts: list[Contact] = []
 
     for row in reader:
@@ -115,11 +132,23 @@ def import_contacts_from_csv_text(db: Session, organization_id: uuid.UUID, csv_t
         if contact.do_not_call:
             already_do_not_call += 1
 
+        if certify_consent:
+            from app.models.consent_record import ConsentRecord
+
+            text = "Consentement DÉCLARÉ par le client au moment de l'import (fichier CSV), non capturé directement par la plateforme."
+            if consent_note:
+                text += f" Précision fournie par le client : {consent_note}"
+            db.add(ConsentRecord(
+                organization_id=organization_id, contact_id=contact.id,
+                source="import_certifie_client", consent_text=text,
+            ))
+            consent_certified_count += 1
+
         contacts.append(contact)
         imported += 1
 
     summary = ImportSummary(
         imported=imported, skipped_invalid_phone=skipped, total=imported + skipped,
-        already_do_not_call=already_do_not_call,
+        already_do_not_call=already_do_not_call, consent_certified_count=consent_certified_count,
     )
     return summary, contacts

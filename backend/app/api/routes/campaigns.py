@@ -12,7 +12,7 @@ import random
 import uuid
 from datetime import datetime, time, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -99,6 +99,7 @@ class ImportSummary(BaseModel):
     skipped_invalid_phone: int
     total_targets: int
     already_do_not_call: int = 0
+    consent_certified_count: int = 0
 
 
 class BatchResult(BaseModel):
@@ -201,6 +202,8 @@ def get_campaign(
 async def import_contacts(
     campaign_id: uuid.UUID,
     file: UploadFile = File(...),
+    certify_consent: bool = Form(False),
+    consent_note: str | None = Form(None),
     db: Session = Depends(get_db),
     organization_id: uuid.UUID = Depends(require_organization_access),
 ):
@@ -211,11 +214,18 @@ async def import_contacts(
     Les contacts sont créés (ou réutilisés s'ils existent déjà par numéro)
     dans le CRM de l'organisation (section 18), via l'utilitaire partagé
     avec l'import CRM direct (app.core.contacts_import).
+
+    `certify_consent` (section 42/43) : le client DÉCLARE disposer déjà du
+    consentement de ces contacts (ex. clients existants pour une campagne
+    de Fidélisation) — utile car un import CSV n'a, contrairement à
+    Facebook Lead Ads, aucune capture automatique du consentement.
     """
     campaign = get_campaign_or_404(campaign_id, organization_id, db)
 
     raw = (await file.read()).decode("utf-8-sig", errors="replace")
-    shared_summary, contacts = import_contacts_from_csv_text(db, organization_id, raw)
+    shared_summary, contacts = import_contacts_from_csv_text(
+        db, organization_id, raw, certify_consent=certify_consent, consent_note=consent_note,
+    )
 
     for contact in contacts:
         db.add(CampaignTarget(campaign_id=campaign.id, contact_id=contact.id))
@@ -227,6 +237,7 @@ async def import_contacts(
         skipped_invalid_phone=shared_summary.skipped_invalid_phone,
         total_targets=total_targets,
         already_do_not_call=shared_summary.already_do_not_call,
+        consent_certified_count=shared_summary.consent_certified_count,
     )
 
 

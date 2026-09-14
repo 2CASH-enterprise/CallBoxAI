@@ -20,6 +20,8 @@ export default function CampaignsPage() {
 
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<string | null>(null);
+  const [certifyConsent, setCertifyConsent] = useState(false);
+  const [consentNote, setConsentNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [runningBatch, setRunningBatch] = useState(false);
@@ -80,12 +82,17 @@ export default function CampaignsPage() {
     setImporting(true);
     setImportSummary(null);
     try {
-      const summary = await api.importCampaignContacts(currentOrg.organization_id, selectedId, e.target.files[0]);
+      const summary = await api.importCampaignContacts(
+        currentOrg.organization_id, selectedId, e.target.files[0], certifyConsent, consentNote.trim() || undefined
+      );
       const dncNote = summary.already_do_not_call > 0
         ? ` ${summary.already_do_not_call} contact(s) déjà en liste repoussoir (jamais appelé(s)).`
         : "";
+      const consentNoteText = summary.consent_certified_count > 0
+        ? ` Consentement certifié pour ${summary.consent_certified_count} contact(s).`
+        : "";
       setImportSummary(
-        `${summary.imported} contact(s) importé(s), ${summary.skipped_invalid_phone} numéro(s) invalide(s) ignoré(s). Total dans la campagne : ${summary.total_targets}.${dncNote}`
+        `${summary.imported} contact(s) importé(s), ${summary.skipped_invalid_phone} numéro(s) invalide(s) ignoré(s). Total dans la campagne : ${summary.total_targets}.${dncNote}${consentNoteText}`
       );
       loadDetail();
     } finally {
@@ -179,6 +186,32 @@ export default function CampaignsPage() {
                     Colonnes attendues : <code>phone</code> (obligatoire), <code>first_name</code>, <code>last_name</code>,{" "}
                     <code>company</code>, <code>job_title</code>, <code>source</code> (toutes optionnelles).
                   </p>
+
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={certifyConsent}
+                      onChange={(e) => setCertifyConsent(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      Je certifie disposer du consentement de ces contacts à être recontactés (utile pour une campagne
+                      Fidélisation sur des clients existants, dont le consentement n'est pas capturé automatiquement
+                      comme avec Facebook Lead Ads).
+                    </span>
+                  </label>
+                  {certifyConsent && (
+                    <input
+                      placeholder="Précision optionnelle (ex. « clients ayant souscrit avant 2025 »)"
+                      value={consentNote}
+                      onChange={(e) => setConsentNote(e.target.value)}
+                      style={{
+                        width: "100%", maxWidth: 420, border: "1px solid var(--color-line)",
+                        borderRadius: "var(--radius-sm)", padding: "7px 10px", fontSize: 12.5, marginBottom: 10,
+                      }}
+                    />
+                  )}
+
                   <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImport} disabled={importing} />
                   {importSummary && <p className={styles.batchResult}>{importSummary}</p>}
                 </div>

@@ -357,6 +357,7 @@ export interface ImportSummary {
   skipped_invalid_phone: number;
   total_targets: number;
   already_do_not_call: number;
+  consent_certified_count: number;
 }
 
 export interface PipelineStage {
@@ -733,9 +734,11 @@ export const api = {
     }),
   getCampaign: (organizationId: string, campaignId: string) =>
     request<CampaignDetail>(`/campaigns/${campaignId}`, { organizationId }),
-  importCampaignContacts: (organizationId: string, campaignId: string, file: File) => {
+  importCampaignContacts: (organizationId: string, campaignId: string, file: File, certifyConsent = false, consentNote?: string) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("certify_consent", String(certifyConsent));
+    if (consentNote) formData.append("consent_note", consentNote);
     return request<ImportSummary>(`/campaigns/${campaignId}/import`, {
       method: "POST",
       organizationId,

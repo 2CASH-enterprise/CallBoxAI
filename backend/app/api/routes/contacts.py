@@ -6,7 +6,7 @@ import io
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response, Form
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -135,6 +135,8 @@ def list_contacts(
 @router.post("/contacts/import/upload", response_model=ImportSummary)
 async def import_contacts_upload(
     file: UploadFile = File(...),
+    certify_consent: bool = Form(False),
+    consent_note: str | None = Form(None),
     db: Session = Depends(get_db),
     organization_id: uuid.UUID = Depends(require_organization_access),
 ):
@@ -143,14 +145,22 @@ async def import_contacts_upload(
     Pour importer 1000 contacts d'un coup plutôt qu'un par un (section 18).
     """
     raw = (await file.read()).decode("utf-8-sig", errors="replace")
-    summary, _contacts = import_contacts_from_csv_text(db, organization_id, raw)
+    summary, _contacts = import_contacts_from_csv_text(
+        db, organization_id, raw, certify_consent=certify_consent, consent_note=consent_note,
+    )
     db.commit()
     return summary
 
 
+class ImportTextRequestWithConsent(BaseModel):
+    content: str
+    certify_consent: bool = False
+    consent_note: str | None = None
+
+
 @router.post("/contacts/import/text", response_model=ImportSummary)
 def import_contacts_text(
-    payload: ImportTextRequest,
+    payload: ImportTextRequestWithConsent,
     db: Session = Depends(get_db),
     organization_id: uuid.UUID = Depends(require_organization_access),
 ):
@@ -159,7 +169,10 @@ def import_contacts_text(
     une colonne "phone"). Pratique pour coller une liste depuis Excel/Sheets
     sans avoir à d'abord l'exporter en fichier.
     """
-    summary, _contacts = import_contacts_from_csv_text(db, organization_id, payload.content)
+    summary, _contacts = import_contacts_from_csv_text(
+        db, organization_id, payload.content,
+        certify_consent=payload.certify_consent, consent_note=payload.consent_note,
+    )
     db.commit()
     return summary
 
