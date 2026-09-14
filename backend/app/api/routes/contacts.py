@@ -302,3 +302,213 @@ def get_contact_compliance_log(
         .all()
     )
     return logs
+
+
+# ---------- Droits RGPD génériques : accès et effacement (section 42/43) ----------
+# Applicables à TOUTE la plateforme, quel que soit l'agent à l'origine du
+# contact (accueil, service client, prospection...) — pas propres à la
+# prospection commerciale.
+
+class DataSubjectRequestOut(BaseModel):
+    id: uuid.UUID
+    contact_id: uuid.UUID
+    request_type: str
+    status: str
+    notes: str | None
+    requested_at: datetime
+    fulfilled_at: datetime | None
+
+    class Config:
+        from_attributes = True
+
+
+class DataSubjectRequestCreate(BaseModel):
+    request_type: str  # "access" | "erasure"
+    notes: str | None = None
+
+
+@router.post("/contacts/{contact_id}/data-subject-requests", response_model=DataSubjectRequestOut)
+def create_data_subject_request(
+    contact_id: uuid.UUID,
+    payload: DataSubjectRequestCreate,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """Enregistre une demande d'exercice de droit (accès ou effacement), avant de la traiter."""
+    if payload.request_type not in ("access", "erasure"):
+        raise HTTPException(status_code=400, detail="Type de demande invalide (attendu : access ou erasure)")
+
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    from app.models.data_subject_request import DataSubjectRequest
+
+    request = DataSubjectRequest(
+        organization_id=organization_id, contact_id=contact_id,
+        request_type=payload.request_type, notes=payload.notes,
+    )
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+@router.get("/contacts/{contact_id}/data-subject-requests", response_model=list[DataSubjectRequestOut])
+def list_data_subject_requests(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    from app.models.data_subject_request import DataSubjectRequest
+
+    return (
+        db.query(DataSubjectRequest)
+        .filter(DataSubjectRequest.contact_id == contact_id, DataSubjectRequest.organization_id == organization_id)
+        .order_by(DataSubjectRequest.requested_at.desc())
+        .all()
+    )
+
+
+@router.get("/contacts/{contact_id}/data-export")
+def export_contact_data(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Droit d'accès (section 42/43) : compile l'intégralité des données
+    détenues sur ce contact — à remettre à la personne qui en fait la
+    demande. Marque automatiquement la dernière demande d'accès en attente
+    comme traitée, s'il en existe une.
+    """
+    from app.models.appointment import Appointment
+    from app.models.ticket import Ticket
+    from app.models.call import Call
+    from app.models.consent_record import ConsentRecord
+    from app.models.compliance_audit_log import ComplianceAuditLog
+    from app.models.whatsapp_log import WhatsAppLog
+    from app.models.sms_log import SmsLog
+    from app.models.data_subject_request import DataSubjectRequest
+
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    calls = db.query(Call).filter(Call.contact_id == contact_id, Call.organization_id == organization_id).all()
+    appointments = db.query(Appointment).filter(Appointment.contact_id == contact_id, Appointment.organization_id == organization_id).all()
+    tickets = db.query(Ticket).filter(Ticket.contact_id == contact_id, Ticket.organization_id == organization_id).all()
+    consents = db.query(ConsentRecord).filter(ConsentRecord.contact_id == contact_id, ConsentRecord.organization_id == organization_id).all()
+    audit_logs = db.query(ComplianceAuditLog).filter(ComplianceAuditLog.contact_id == contact_id, ComplianceAuditLog.organization_id == organization_id).all()
+    whatsapp_logs = db.query(WhatsAppLog).filter(WhatsAppLog.to_number == contact.phone, WhatsAppLog.organization_id == organization_id).all()
+    sms_logs = db.query(SmsLog).filter(SmsLog.to_number == contact.phone, SmsLog.organization_id == organization_id).all()
+
+    export = {
+        "contact": {
+            "id": str(contact.id), "first_name": contact.first_name, "last_name": contact.last_name,
+            "phone": contact.phone, "email": contact.email, "status": contact.status,
+            "company": contact.company, "job_title": contact.job_title, "source": contact.source,
+            "do_not_call": contact.do_not_call, "created_at": contact.created_at.isoformat(),
+        },
+        "calls": [
+            {
+                "id": str(c.id), "direction": c.direction, "status": c.status, "started_at": c.started_at.isoformat(),
+                "duration_seconds": c.duration_seconds, "qualification": c.qualification, "intent": c.intent,
+                "sentiment": c.sentiment, "transcript": c.transcript, "summary": c.summary,
+            } for c in calls
+        ],
+        "appointments": [
+            {"id": str(a.id), "scheduled_at": a.scheduled_at.isoformat(), "status": a.status, "notes": a.notes}
+            for a in appointments
+        ],
+        "tickets": [
+            {"id": str(t.id), "subject": t.subject, "status": t.status, "created_at": t.created_at.isoformat()}
+            for t in tickets
+        ],
+        "consent_records": [
+            {"id": str(c.id), "source": c.source, "consent_text": c.consent_text, "consented_at": c.consented_at.isoformat(), "revoked_at": c.revoked_at.isoformat() if c.revoked_at else None}
+            for c in consents
+        ],
+        "compliance_audit_logs": [
+            {"decision": a.decision, "reason": a.reason, "legal_basis": a.legal_basis, "created_at": a.created_at.isoformat()}
+            for a in audit_logs
+        ],
+        "whatsapp_messages": [{"body": w.body, "created_at": w.created_at.isoformat()} for w in whatsapp_logs],
+        "sms_messages": [{"body": s.body, "created_at": s.created_at.isoformat()} for s in sms_logs],
+    }
+
+    pending_access_request = (
+        db.query(DataSubjectRequest)
+        .filter(
+            DataSubjectRequest.contact_id == contact_id, DataSubjectRequest.organization_id == organization_id,
+            DataSubjectRequest.request_type == "access", DataSubjectRequest.status == "pending",
+        )
+        .first()
+    )
+    if pending_access_request:
+        pending_access_request.status = "fulfilled"
+        pending_access_request.fulfilled_at = datetime.utcnow()
+        db.commit()
+
+    return export
+
+
+@router.post("/contacts/{contact_id}/erase")
+def erase_contact_data(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    organization_id: uuid.UUID = Depends(require_organization_access),
+):
+    """
+    Droit à l'effacement (section 42/43) : anonymise l'identité du contact
+    (nom, email, entreprise) et le contenu détaillé de ses appels — mais
+    conserve le NUMÉRO en liste repoussoir définitive, pour empêcher qu'il
+    soit réimporté et rappelé par erreur plus tard, ce qui irait à
+    l'encontre même de la demande d'effacement.
+    """
+    from app.models.call import Call
+    from app.models.data_subject_request import DataSubjectRequest
+
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.organization_id == organization_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact introuvable pour cette organisation")
+
+    ERASURE_PLACEHOLDER = "[Effacé à la demande de la personne concernée]"
+
+    contact.first_name = None
+    contact.last_name = None
+    contact.email = None
+    contact.company = None
+    contact.job_title = None
+    contact.source = None
+    contact.do_not_call = True
+    contact.do_not_call_reason = "Effacement RGPD — ne jamais réimporter ni rappeler ce numéro."
+    contact.do_not_call_at = datetime.utcnow()
+
+    calls = db.query(Call).filter(Call.contact_id == contact_id, Call.organization_id == organization_id).all()
+    for call in calls:
+        if call.transcript:
+            call.transcript = ERASURE_PLACEHOLDER
+        if call.summary:
+            call.summary = ERASURE_PLACEHOLDER
+
+    pending_erasure_request = (
+        db.query(DataSubjectRequest)
+        .filter(
+            DataSubjectRequest.contact_id == contact_id, DataSubjectRequest.organization_id == organization_id,
+            DataSubjectRequest.request_type == "erasure", DataSubjectRequest.status == "pending",
+        )
+        .first()
+    )
+    if pending_erasure_request:
+        pending_erasure_request.status = "fulfilled"
+        pending_erasure_request.fulfilled_at = datetime.utcnow()
+    else:
+        db.add(DataSubjectRequest(
+            organization_id=organization_id, contact_id=contact_id, request_type="erasure",
+            status="fulfilled", fulfilled_at=datetime.utcnow(),
+            notes="Effacement déclenché directement, sans demande préalablement enregistrée.",
+        ))
+
+    db.commit()
+    return {"status": "erased", "contact_id": str(contact_id), "calls_redacted": len(calls)}

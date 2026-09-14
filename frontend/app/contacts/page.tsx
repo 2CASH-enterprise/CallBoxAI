@@ -108,6 +108,30 @@ export default function ContactsPage() {
     load();
   }
 
+  async function handleExportData(contact: Contact) {
+    if (!currentOrg) return;
+    const data = await api.exportContactData(currentOrg.organization_id, contact.id);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `donnees-${contact.phone.replace(/[^0-9]/g, "")}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleEraseData(contact: Contact) {
+    if (!currentOrg) return;
+    const confirmed = window.confirm(
+      `Effacer définitivement les données de ce contact (${contact.first_name || contact.phone}) ? ` +
+      `Son identité et le contenu de ses appels seront anonymisés — le numéro restera en liste repoussoir pour ` +
+      `ne jamais être rappelé. Cette action est irréversible.`
+    );
+    if (!confirmed) return;
+    await api.eraseContactData(currentOrg.organization_id, contact.id);
+    load();
+  }
+
   if (!currentOrg) {
     return <p style={{ color: "var(--color-muted)" }}>Sélectionnez ou créez une organisation.</p>;
   }
@@ -191,7 +215,7 @@ export default function ContactsPage() {
                 {c.company || "—"}{c.job_title ? ` · ${c.job_title}` : ""}
               </span>
               <span className={styles.phone}>{c.phone}</span>
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span className={`${styles.statusTag} ${STATUS_ACCENT[c.status] || styles.statusNeutral}`}>{c.status}</span>
                 {c.do_not_call ? (
                   <button
@@ -217,6 +241,26 @@ export default function ContactsPage() {
                     Liste repoussoir
                   </button>
                 )}
+                <button
+                  onClick={() => handleExportData(c)}
+                  title="Exporter toutes les données détenues sur ce contact (droit d'accès RGPD)"
+                  style={{
+                    fontSize: 10.5, color: "var(--color-muted)", background: "none",
+                    border: "none", cursor: "pointer", textDecoration: "underline",
+                  }}
+                >
+                  Exporter
+                </button>
+                <button
+                  onClick={() => handleEraseData(c)}
+                  title="Effacer définitivement les données de ce contact (droit à l'effacement RGPD)"
+                  style={{
+                    fontSize: 10.5, color: "var(--color-red)", background: "none",
+                    border: "none", cursor: "pointer", textDecoration: "underline",
+                  }}
+                >
+                  Effacer
+                </button>
               </span>
             </div>
           ))

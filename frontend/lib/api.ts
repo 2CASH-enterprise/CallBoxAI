@@ -811,6 +811,10 @@ export const api = {
     }),
   getContactComplianceLog: (organizationId: string, contactId: string) =>
     request<ComplianceAuditLog[]>(`/contacts/${contactId}/compliance-log`, { organizationId }),
+  exportContactData: (organizationId: string, contactId: string) =>
+    request<Record<string, unknown>>(`/contacts/${contactId}/data-export`, { organizationId }),
+  eraseContactData: (organizationId: string, contactId: string) =>
+    request<{ status: string; calls_redacted: number }>(`/contacts/${contactId}/erase`, { method: "POST", organizationId }),
   importContactsUpload: (organizationId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
