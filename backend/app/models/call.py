@@ -4,7 +4,7 @@ Appel (sections 12 et 13 du cahier des charges).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Text
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Text, Boolean
 
 from app.core.database import Base
 from app.models.distributor import GUID
@@ -40,3 +40,14 @@ class Call(Base):
 
     started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime, nullable=True)
+
+    # Consentement à l'enregistrement (section 42/43) : la personne peut
+    # refuser d'être enregistrée TOUT EN CONTINUANT l'appel — dans ce cas,
+    # le contenu détaillé (transcript/résumé) n'est jamais conservé, seul le
+    # résultat de qualification l'est (nécessaire au suivi commercial).
+    recording_consent_refused = Column(Boolean, default=False)
+
+    # Purge automatique après 6 mois (section 42/43, recommandation CNIL) :
+    # un Super Admin peut exempter un appel de la purge en cas de litige en
+    # cours nécessitant sa conservation plus longue.
+    retention_hold = Column(Boolean, default=False)
