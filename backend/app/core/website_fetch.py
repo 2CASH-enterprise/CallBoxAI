@@ -6,7 +6,20 @@ extraction par un modèle de langage.
 import httpx
 from bs4 import BeautifulSoup
 
-USER_AGENT = "Mozilla/5.0 (compatible; CallBoxAI-Prospecting/1.0; +https://callbox-ai.com)"
+# En-têtes proches d'un vrai navigateur (section 29, résilience) : de
+# nombreux sites (hôtels notamment, souvent derrière Cloudflare ou une
+# protection similaire) renvoient une erreur 403 face à un User-Agent qui
+# s'identifie explicitement comme un robot, même parfaitement légitime.
+# Utilisé uniquement pour consulter des pages publiques, une seule requête
+# par cible — usage ponctuel et raisonnable, pas une exploration en masse.
+REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+}
 
 
 def fetch_website_text(url: str, timeout: float = 10.0) -> str:
@@ -18,7 +31,7 @@ def fetch_website_text(url: str, timeout: float = 10.0) -> str:
     """
     response = httpx.get(
         url, timeout=timeout, follow_redirects=True,
-        headers={"User-Agent": USER_AGENT},
+        headers=REQUEST_HEADERS,
     )
     response.raise_for_status()
 
