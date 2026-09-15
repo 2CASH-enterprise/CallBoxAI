@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.database import Base, engine
-from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys, tickets, pms, sms, dashboard_today, telecom, public_demo, prospection, agent_teams, consent, facebook_webhooks, facebook_oauth
+from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys, tickets, pms, sms, dashboard_today, telecom, public_demo, prospection, agent_teams, consent, facebook_webhooks, facebook_oauth, prospecting_campaigns
 
 # Sans cette configuration explicite, les logger.info()/warning() de notre
 # propre code (voir app.api.routes.webhooks, app.api.routes.pms,
@@ -85,3 +85,4 @@ app.include_router(agent_teams.router)
 app.include_router(consent.router)
 app.include_router(facebook_webhooks.router)
 app.include_router(facebook_oauth.router)
+app.include_router(prospecting_campaigns.router)

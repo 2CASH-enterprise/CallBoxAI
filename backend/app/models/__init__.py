@@ -22,6 +22,7 @@ from app.models.consent_record import ConsentRecord
 from app.models.compliance_audit_log import ComplianceAuditLog
 from app.models.data_subject_request import DataSubjectRequest
 from app.models.error_log import ErrorLog
+from app.models.prospecting_campaign import ProspectingCampaign, ProspectingTarget
 
 __all__ = [
     "Organization",
@@ -52,4 +53,6 @@ __all__ = [
     "ComplianceAuditLog",
     "DataSubjectRequest",
     "ErrorLog",
+    "ProspectingCampaign",
+    "ProspectingTarget",
 ]
