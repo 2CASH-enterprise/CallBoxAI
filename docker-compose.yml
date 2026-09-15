@@ -72,6 +72,11 @@ services:
       # précédents sur ce même fichier) : nécessaires au flux OAuth
       # "Connecter avec Facebook" (section 42/43).
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      # Ajoutées après coup (même bug récurrent que PUBLIC_BASE_URL,
+      # DEMO_AGENT_RETELL_ID, FACEBOOK_APP_SECRET) : oubliées lors de
+      # l'introduction de l'outil interne de prospection.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-}
       # Même bug que PUBLIC_BASE_URL à l'origine : oublié à l'introduction
       # de l'appel de démo public (section 1), corrigé directement cette fois.
