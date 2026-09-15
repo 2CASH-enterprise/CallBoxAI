@@ -403,3 +403,71 @@ def get_margin_report(
     # Les agents avec le plus d'activité en premier — les plus utiles à surveiller
     results.sort(key=lambda r: r.total_minutes, reverse=True)
     return results
+
+
+@router.post("/purge-old-calls")
+def trigger_purge_old_calls(db: Session = Depends(get_db), _admin: User = Depends(require_super_admin)):
+    """
+    Déclenche manuellement la purge des appels de plus de 6 mois (section
+    42/43) — en complément de la tâche planifiée automatique. Utile pour
+    tester ou forcer une purge immédiate depuis le dashboard.
+    """
+    from app.core.purge_old_calls import run_purge
+
+    count = run_purge(db)
+    return {"purged_count": count}
+
+
+# ---------- Monitoring : journal des erreurs applicatives ----------
+
+class ErrorLogOut(BaseModel):
+    id: uuid.UUID
+    organization_id: uuid.UUID | None
+    source: str
+    message: str
+    details: str | None
+    resolved: bool
+    resolved_at: datetime | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/error-logs", response_model=list[ErrorLogOut])
+def list_error_logs(
+    resolved: bool | None = None,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """
+    Monitoring Super Admin : liste des erreurs applicatives capturées (voir
+    app.core.error_log), les plus récentes en premier. Filtrable par statut
+    de résolution pour se concentrer sur ce qui reste à traiter.
+    """
+    from app.models.error_log import ErrorLog
+
+    query = db.query(ErrorLog)
+    if resolved is not None:
+        query = query.filter(ErrorLog.resolved == resolved)
+    return query.order_by(ErrorLog.created_at.desc()).limit(200).all()
+
+
+@router.post("/error-logs/{error_id}/resolve", response_model=ErrorLogOut)
+def resolve_error_log(
+    error_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """Marque une erreur comme traitée — ne la supprime jamais, garde l'historique."""
+    from app.models.error_log import ErrorLog
+
+    error = db.query(ErrorLog).filter(ErrorLog.id == error_id).first()
+    if not error:
+        raise HTTPException(status_code=404, detail="Erreur introuvable")
+
+    error.resolved = True
+    error.resolved_at = datetime.utcnow()
+    db.commit()
+    db.refresh(error)
+    return error

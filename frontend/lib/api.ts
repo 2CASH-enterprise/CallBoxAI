@@ -150,6 +150,17 @@ export interface AgentMargin {
   cost_per_result_fcfa: number | null;
 }
 
+export interface ErrorLogEntry {
+  id: string;
+  organization_id: string | null;
+  source: string;
+  message: string;
+  details: string | null;
+  resolved: boolean;
+  resolved_at: string | null;
+  created_at: string;
+}
+
 export interface Ticket {
   id: string;
   organization_id: string;
@@ -604,6 +615,11 @@ export const api = {
 
   listAllAgents: () => request<AdminAgent[]>("/admin/agents"),
   getMarginReport: (days = 30) => request<AgentMargin[]>(`/admin/margin-report?days=${days}`),
+
+  listErrorLogs: (resolved?: boolean) =>
+    request<ErrorLogEntry[]>(`/admin/error-logs${resolved !== undefined ? `?resolved=${resolved}` : ""}`),
+  resolveErrorLog: (errorId: string) =>
+    request<ErrorLogEntry>(`/admin/error-logs/${errorId}/resolve`, { method: "POST" }),
 
   listAgentTeams: (organizationId: string) => request<AgentTeam[]>("/agent-teams", { organizationId }),
   createAgentTeam: (organizationId: string, name: string) =>

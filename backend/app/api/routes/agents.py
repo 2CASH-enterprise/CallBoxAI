@@ -153,8 +153,11 @@ def _provision_retell_agent_if_configured(agent: Agent, db: Session) -> None:
             "Provisionnement Retell terminé avec succès : agent=%s retell_agent_id=%s retell_llm_id=%s",
             agent.id, result["agent_id"], result["llm_id"],
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("Échec du provisionnement automatique de l'agent Retell pour l'agent %s", agent.id)
+        from app.core.error_log import log_error
+
+        log_error(db, source="agent_provisioning", message=f"Échec du provisionnement Retell pour l'agent {agent.id} ({agent.name})", organization_id=agent.organization_id, exc=exc)
 
 
 def _create_agent_for_organization(db: Session, organization_id: uuid.UUID, payload: AgentCreate) -> Agent:

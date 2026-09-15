@@ -3,8 +3,9 @@ Point d'entrée FastAPI.
 """
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.database import Base, engine
 from app.api.routes import health, organizations, agents, calls, contacts, distributors, auth, admin, campaigns, knowledge, analytics, webhooks, appointments, messages, surveys, tickets, pms, sms, dashboard_today, telecom, public_demo, prospection, agent_teams, consent, facebook_webhooks, facebook_oauth
@@ -34,6 +35,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def log_unhandled_exceptions(request: Request, exc: Exception):
+    """
+    Filet de sécurité pour le monitoring Super Admin : capture toute
+    exception NON anticipée (pas déjà interceptée par un try/except local)
+    survenant pendant le traitement d'une requête, pour qu'elle soit
+    visible dans le dashboard plutôt que perdue dans les seuls journaux
+    serveur. Ne change jamais le comportement de l'erreur elle-même : la
+    réponse 500 standard est toujours renvoyée après enregistrement.
+    """
+    from app.core.database import SessionLocal
+    from app.core.error_log import log_error
+
+    db = SessionLocal()
+    try:
+        log_error(db, source=f"unhandled_exception:{request.url.path}", message=str(exc), exc=exc)
+    finally:
+        db.close()
+
+    return JSONResponse(status_code=500, content={"detail": "Une erreur interne est survenue."})
+
 
 app.include_router(health.router)
 app.include_router(organizations.router)

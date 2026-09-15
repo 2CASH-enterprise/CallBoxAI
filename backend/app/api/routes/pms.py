@@ -123,8 +123,11 @@ def _send_confirmation_sms(db: Session, organization_id: uuid.UUID, phone: str, 
         )
         provider.send_sms(to_number=phone, body=body)
         return True
-    except Exception:
+    except Exception as exc:
         logger.exception("Échec de l'envoi du SMS de confirmation pour la réservation %s", appointment.pms_confirmation_number)
+        from app.core.error_log import log_error
+
+        log_error(db, source="pms_sms_confirmation", message=f"Échec SMS de confirmation pour la réservation {appointment.pms_confirmation_number}", organization_id=organization_id, exc=exc)
         return False
 
 
@@ -227,7 +230,7 @@ class ToolReservationRequest(BaseModel):
 
 
 @router.post("/tools/availability")
-def tool_check_availability(payload: ToolAvailabilityRequest, organization_id: uuid.UUID = Query(...)):
+def tool_check_availability(payload: ToolAvailabilityRequest, organization_id: uuid.UUID = Query(...), db: Session = Depends(get_db)):
     """
     Appelé par Retell EN DIRECT pendant l'appel (function calling, section
     16) — pas de JWT (Retell ne peut pas s'authentifier comme un
@@ -245,8 +248,11 @@ def tool_check_availability(payload: ToolAvailabilityRequest, organization_id: u
     except ValueError as e:
         logger.warning("check_room_availability : ValueError -> %s", e)
         return {"available": False, "error": str(e)}
-    except Exception:
+    except Exception as exc:
         logger.exception("check_room_availability : erreur inattendue")
+        from app.core.error_log import log_error
+
+        log_error(db, source="pms_availability_check", message="Erreur inattendue lors de la vérification de disponibilité PMS", organization_id=organization_id, exc=exc)
         return {"available": False, "error": "Erreur technique lors de la vérification."}
 
     if not offers:
