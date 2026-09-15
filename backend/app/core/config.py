@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     # visible des clients) : extraction des informations pratiques d'un
     # site (hôtel, cabinet médical...) via un modèle de langage.
     anthropic_api_key: str = ""
+    mistral_api_key: str = ""
 
     # Adresse publique du FRONTEND (ex. "https://app.callbox-ai.com") — utilisée
     # pour rediriger le navigateur du client à la fin du flux OAuth Facebook,

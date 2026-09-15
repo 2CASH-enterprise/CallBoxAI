@@ -235,8 +235,18 @@ def update_target(
 
 
 def _get_analysis_provider():
-    """Résilience (section 29) : sans clé API configurée, on retombe sur le fournisseur simulé plutôt que planter."""
+    """
+    Résilience (section 29) : sans aucune clé API configurée, on retombe sur
+    le fournisseur simulé plutôt que planter. Mistral priorisé (préférence
+    exprimée par l'utilisateur, souveraineté française/européenne) si les
+    deux clés sont configurées — sinon Anthropic, sinon simulé.
+    """
     from app.core.config import settings
+
+    if settings.mistral_api_key:
+        from app.providers.analysis.mistral_provider import MistralWebsiteAnalysisProvider
+
+        return MistralWebsiteAnalysisProvider(api_key=settings.mistral_api_key)
 
     if settings.anthropic_api_key:
         from app.providers.analysis.anthropic_provider import AnthropicWebsiteAnalysisProvider
