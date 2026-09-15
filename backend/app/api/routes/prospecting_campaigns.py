@@ -232,3 +232,102 @@ def update_target(
     db.commit()
     db.refresh(target)
     return target
+
+
+def _get_analysis_provider():
+    """Résilience (section 29) : sans clé API configurée, on retombe sur le fournisseur simulé plutôt que planter."""
+    from app.core.config import settings
+
+    if settings.anthropic_api_key:
+        from app.providers.analysis.anthropic_provider import AnthropicWebsiteAnalysisProvider
+
+        return AnthropicWebsiteAnalysisProvider(api_key=settings.anthropic_api_key)
+
+    from app.providers.analysis.mock import MockWebsiteAnalysisProvider
+
+    return MockWebsiteAnalysisProvider()
+
+
+def _analyze_single_target(db: Session, target: ProspectingTarget) -> tuple[bool, str]:
+    """
+    Retourne (succès, message). Ne lève jamais d'exception — pensé pour être
+    appelé en boucle sur tout un lot sans qu'une cible en échec n'interrompe
+    les suivantes (section 29).
+    """
+    if not target.website_url:
+        return False, "Aucun site web renseigné pour cette cible."
+
+    from app.core.website_fetch import fetch_website_text
+
+    try:
+        website_text = fetch_website_text(target.website_url)
+    except Exception as exc:
+        logger.warning("Échec de récupération du site %s : %s", target.website_url, exc)
+        return False, f"Site injoignable ou erreur de récupération ({exc})."
+
+    if not website_text.strip():
+        return False, "Aucun contenu textuel exploitable trouvé sur le site."
+
+    try:
+        provider = _get_analysis_provider()
+        extracted = provider.extract_practical_info(website_text, target.company_name)
+    except Exception as exc:
+        logger.exception("Échec de l'extraction pour la cible %s", target.id)
+        return False, f"Échec de l'analyse par le modèle de langage ({exc})."
+
+    target.extracted_info = extracted
+    target.status = "analyzed"
+    db.commit()
+    return True, "Analyse terminée."
+
+
+@router.post("/{campaign_id}/targets/{target_id}/analyze")
+def analyze_target(
+    campaign_id: uuid.UUID,
+    target_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_super_admin),
+):
+    """Déclenche (ou relance) l'analyse automatique du site web pour UNE cible précise."""
+    target = db.query(ProspectingTarget).filter(
+        ProspectingTarget.id == target_id, ProspectingTarget.campaign_id == campaign_id
+    ).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Cible introuvable pour cette campagne")
+
+    success, message = _analyze_single_target(db, target)
+    return {"success": success, "message": message}
+
+
+class BulkAnalyzeResult(BaseModel):
+    analyzed: int
+    failed: int
+    details: list[dict]
+
+
+@router.post("/{campaign_id}/analyze-all", response_model=BulkAnalyzeResult)
+def analyze_all_targets(campaign_id: uuid.UUID, db: Session = Depends(get_db), _admin: User = Depends(require_super_admin)):
+    """
+    Analyse toutes les cibles de la campagne pas encore analysées — une
+    cible en échec (site injoignable, pas de site renseigné...) n'interrompt
+    jamais les suivantes du lot.
+    """
+    campaign = db.query(ProspectingCampaign).filter(ProspectingCampaign.id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campagne introuvable")
+
+    targets = db.query(ProspectingTarget).filter(
+        ProspectingTarget.campaign_id == campaign_id, ProspectingTarget.status == "imported"
+    ).all()
+
+    analyzed, failed = 0, 0
+    details = []
+    for target in targets:
+        success, message = _analyze_single_target(db, target)
+        details.append({"target_id": str(target.id), "company_name": target.company_name, "success": success, "message": message})
+        if success:
+            analyzed += 1
+        else:
+            failed += 1
+
+    return BulkAnalyzeResult(analyzed=analyzed, failed=failed, details=details)

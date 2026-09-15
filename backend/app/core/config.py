@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     facebook_app_secret: str = ""
     facebook_app_id: str = ""
 
+    # Analyse automatique de site web (outil interne de prospection, jamais
+    # visible des clients) : extraction des informations pratiques d'un
+    # site (hôtel, cabinet médical...) via un modèle de langage.
+    anthropic_api_key: str = ""
+
     # Adresse publique du FRONTEND (ex. "https://app.callbox-ai.com") — utilisée
     # pour rediriger le navigateur du client à la fin du flux OAuth Facebook,
     # distincte de public_base_url qui pointe vers le backend.
