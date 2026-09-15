@@ -129,9 +129,10 @@ export default function AdminPage() {
       </div>
 
       <p className={styles.note}>
-        Indicateurs business avancés (MRR, ARR, churn, ARPU) et monitoring technique (CPU, latence API, erreurs
-        fournisseurs) disponibles une fois le moteur de facturation (sections 20-21) et l'observabilité Prometheus/Grafana
-        (section 26) branchés — non affichés ici pour éviter tout chiffre approximatif.
+        Indicateurs business avancés (MRR, ARR, churn, ARPU) disponibles une fois le moteur de facturation
+        (sections 20-21) branché. Le monitoring technique des erreurs applicatives est disponible sur la page{" "}
+        <a href="/admin/monitoring">Monitoring</a> ; l&apos;observabilité infrastructure (CPU, latence API, erreurs
+        fournisseurs — section 26) reste à construire séparément.
       </p>
     </div>
   );
