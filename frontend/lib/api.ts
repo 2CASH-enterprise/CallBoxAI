@@ -161,6 +161,39 @@ export interface ErrorLogEntry {
   created_at: string;
 }
 
+export interface ProspectingCampaign {
+  id: string;
+  name: string;
+  sector: string;
+  agent_template_key: string;
+  created_at: string;
+  targets_count: number;
+}
+
+export interface ProspectingTarget {
+  id: string;
+  campaign_id: string;
+  company_name: string;
+  address: string | null;
+  phone: string | null;
+  website_url: string | null;
+  email: string | null;
+  contact_name: string | null;
+  status: string;
+  extracted_info: string | null;
+  demo_agent_id: string | null;
+  demo_page_slug: string | null;
+  email_subject: string | null;
+  email_body: string | null;
+  created_at: string;
+}
+
+export interface ProspectingImportSummary {
+  imported: number;
+  skipped: number;
+  total_in_campaign: number;
+}
+
 export interface Ticket {
   id: string;
   organization_id: string;
@@ -620,6 +653,31 @@ export const api = {
     request<ErrorLogEntry[]>(`/admin/error-logs${resolved !== undefined ? `?resolved=${resolved}` : ""}`),
   resolveErrorLog: (errorId: string) =>
     request<ErrorLogEntry>(`/admin/error-logs/${errorId}/resolve`, { method: "POST" }),
+
+  listProspectingCampaigns: () => request<ProspectingCampaign[]>("/admin/prospecting-campaigns"),
+  createProspectingCampaign: (data: { name: string; sector: string; agent_template_key: string }) =>
+    request<ProspectingCampaign>("/admin/prospecting-campaigns", { method: "POST", body: JSON.stringify(data) }),
+  listProspectingTargets: (campaignId: string) =>
+    request<ProspectingTarget[]>(`/admin/prospecting-campaigns/${campaignId}/targets`),
+  importProspectingTargets: (campaignId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<ProspectingImportSummary>(`/admin/prospecting-campaigns/${campaignId}/import`, {
+      method: "POST",
+      body: formData,
+    });
+  },
+  updateProspectingTarget: (campaignId: string, targetId: string, data: Partial<ProspectingTarget>) =>
+    request<ProspectingTarget>(`/admin/prospecting-campaigns/${campaignId}/targets/${targetId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  analyzeProspectingTarget: (campaignId: string, targetId: string) =>
+    request<{ success: boolean; message: string }>(`/admin/prospecting-campaigns/${campaignId}/targets/${targetId}/analyze`, { method: "POST" }),
+  analyzeAllProspectingTargets: (campaignId: string) =>
+    request<{ analyzed: number; failed: number; details: Array<{ target_id: string; company_name: string; success: boolean; message: string }> }>(
+      `/admin/prospecting-campaigns/${campaignId}/analyze-all`, { method: "POST" }
+    ),
 
   listAgentTeams: (organizationId: string) => request<AgentTeam[]>("/agent-teams", { organizationId }),
   createAgentTeam: (organizationId: string, name: string) =>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Bot, Phone, Megaphone, BarChart3,
-  BookOpen, Users, Globe, Network, Calendar, TrendingDown, TrendingUp, AlertTriangle,
+  BookOpen, Users, Globe, Network, Calendar, TrendingDown, TrendingUp, AlertTriangle, Sparkles,
   MessageSquare, ClipboardList, LifeBuoy, MessageCircle, Sunrise, Inbox, type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -86,6 +86,7 @@ export function Sidebar() {
     ...(user?.is_super_admin ? [{ href: "/admin/agent-requests", label: "Demandes d'agents", icon: Inbox }] : []),
     ...(user?.is_super_admin ? [{ href: "/admin/margin", label: "Suivi de marge", icon: TrendingUp }] : []),
     ...(user?.is_super_admin ? [{ href: "/admin/monitoring", label: "Monitoring", icon: AlertTriangle }] : []),
+    ...(user?.is_super_admin ? [{ href: "/admin/prospecting", label: "Prospection", icon: Sparkles }] : []),
     ...(user?.is_super_admin || user?.distributor_id
       ? [{ href: "/distributors", label: "Distributeurs", icon: Network }]
       : []),
